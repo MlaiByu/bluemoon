@@ -1,0 +1,69 @@
+# ===== Python (blog-api) =====
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+venv/
+.venv/
+env/
+.Python
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ===== 环境变量 / 敏感配置 =====
+.env
+.env.local
+.env.production
+# 保留模板：!.env.example
+!.env.example
+
+# ===== Node.js / Vite (blog-web) =====
+node_modules/
+dist/
+dist-ssr/
+*.local
+vite.config.js.timestamp-*.mjs
+.npm/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ===== Redis 发行版（二进制工具，不入库） =====
+_tools/redis/
+
+# ===== 用户上传文件 =====
+blog-api/static/uploads/
+
+# ===== 日志 =====
+*.log
+logs/
+
+# ===== AI 工具临时文件 =====
+.playwright-cli/
+.workbuddy/
+
+# ===== 自检 / 验证产物（开发过程临时生成，勿提交） =====
+# 截图、验证脚本等一次性调试资源，完成验证后即清理
+docs/theme-switch-preview/
+scripts/verify/
+_tools/verify-*.cjs
+_tools/verify-*.mjs
+_tools/verify-*.py
+shot-*.png
+*-screenshot.png
+
+# ===== IDE / 编辑器 =====
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ===== 系统文件 =====
+.DS_Store
+Thumbs.db
+desktop.ini
+# Windows 保留名误创建的文件
+nul

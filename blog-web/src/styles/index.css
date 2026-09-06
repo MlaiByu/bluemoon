@@ -1,0 +1,652 @@
+/* ==========================================================================
+   bluemoon 设计令牌 & 全局样式
+   视觉语言：二次元 / 日系动漫风 —— 柔和明快的粉蓝紫配色、大圆角、
+   柔和彩色阴影、回弹动效、光斑与几何点缀，同时保持现代简洁的排版与留白。
+   ========================================================================== */
+:root {
+  /* ---------- 主色与点缀色（日系柔和） ---------- */
+  --bm-primary: #7aa5f7;      /* 晴空蓝 */
+  --bm-primary-2: #b892f6;    /* 薰衣草紫 */
+  --bm-accent: #ffb0c8;       /* 樱花粉 */
+  --bm-mint: #8fe0cf;         /* 薄荷绿 */
+  --bm-lemon: #ffdf8a;        /* 柠檬黄（强调/置顶） */
+
+  /* 三色梦幻渐变：蓝 → 紫 → 粉 */
+  --bm-gradient: linear-gradient(135deg, #8ab6ff 0%, #b892f6 52%, #ffb0c8 100%);
+  --bm-gradient-soft: linear-gradient(
+    135deg,
+    rgba(138, 182, 255, 0.1) 0%,
+    rgba(184, 146, 246, 0.1) 52%,
+    rgba(255, 176, 200, 0.1) 100%
+  );
+  --bm-primary-soft: #eef4ff;
+  --bm-primary-soft-2: #f7f0ff;
+  --bm-accent-soft: #fff1f6;
+
+  /* ---------- 文字 ---------- */
+  --bm-text: #3a3a4d;
+  --bm-text-sub: #7a7a92;
+  --bm-text-mute: #a5a5bb;
+
+  /* ---------- 背景 / 卡片 / 描边 ---------- */
+  --bm-bg: #fdfbff;
+  --bm-card: #ffffff;
+  --bm-border: #efeaf9;
+
+  /* ---------- 圆角（偏大，营造柔和感） ---------- */
+  --bm-radius: 18px;
+  --bm-radius-sm: 12px;
+  --bm-radius-lg: 26px;
+
+  /* ---------- 柔和彩色阴影 ---------- */
+  --bm-shadow: 0 4px 20px rgba(122, 165, 247, 0.08);
+  --bm-shadow-hover: 0 16px 34px rgba(184, 146, 246, 0.22);
+  --bm-shadow-card: 0 6px 22px rgba(58, 58, 77, 0.06);
+  --bm-shadow-color: rgba(184, 146, 246, 0.28); /* 供组件做光晕投影复用 */
+
+  /* ---------- 动效曲线 ---------- */
+  --bm-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --bm-ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1); /* 轻微回弹，轻盈俏皮 */
+
+  /* ---------- 装饰元素（光斑 / 点阵 / 圆环） ---------- */
+  --bm-glow-blue: rgba(122, 165, 247, 0.3);
+  --bm-glow-pink: rgba(255, 176, 200, 0.26);
+  --bm-glow-mint: rgba(143, 224, 207, 0.22);
+  --bm-dot: rgba(184, 146, 246, 0.22);
+  --bm-ring: rgba(255, 176, 200, 0.32);
+
+  /* ---------- 拉灯控件：二次元马卡龙配色 ---------- */
+  --lamp-sky: #a8d8ea;        /* 粉蓝（白昼天空） */
+  --lamp-sakura: #ffb7c5;     /* 樱粉 */
+  --lamp-lavender: #c3aed6;   /* 薰衣草紫 */
+  --lamp-warm: #fff3b0;       /* 暖黄（开灯） */
+  --lamp-gold: #f7dc6f;       /* 金色（星星/高亮） */
+  --lamp-night: #2b2d42;      /* 星空深蓝（关灯） */
+  --lamp-cord: #b9a9d6;       /* 拉绳基础色 */
+
+  /* ---------- 纸灯笼配色 ---------- */
+  --lantern-vermilion: #e8644a;   /* 朱砂红（灯身主色） */
+  --lantern-orange: #f28a5b;      /* 暖橘 */
+  --lantern-paper: #fbe9d7;       /* 宣纸/米白底 */
+  --lantern-apricot: #fdf3e7;     /* 温润浅杏（日间背景） */
+  --lantern-ink: #1d2130;         /* 墨色（夜间背景） */
+  --lantern-bamboo: rgba(150, 96, 56, 0.18); /* 竹编纹理色 */
+  --lantern-wood: #6b4a2f;        /* 木纹横档 */
+  --lantern-cherry: #ffb7c5;      /* 樱花粉（流苏混色） */
+  --lantern-bead: #e6b8a2;        /* 琉璃珠（流苏末端） */
+
+  /* ---------- 动效曲线（含 spring） ---------- */
+  --bm-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);   /* 回弹（同 bounce） */
+  --bm-ease-spring-soft: cubic-bezier(0.22, 1.28, 0.4, 1);/* 柔和回弹 */
+  --bm-ease-out-back: cubic-bezier(0.34, 1.3, 0.64, 1);   /* 松手吸附回补 */
+
+  /* ---------- Element Plus 主色统一为薰衣草紫 ---------- */
+  --el-color-primary: #8b7cf0;
+  --el-color-primary-light-3: #ab9ff5;
+  --el-color-primary-light-5: #c5bdf8;
+  --el-color-primary-light-7: #ded9fb;
+  --el-color-primary-light-8: #eae6fc;
+  --el-color-primary-light-9: #f5f3fe;
+  --el-color-primary-dark-2: #6f5ed6;
+
+  --el-border-radius-base: 12px;
+}
+
+/* ============================ 基础重置 ============================ */
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bm-bg);
+  color: var(--bm-text);
+  /* 圆润字体优先：Zen Maru Gothic（日系圆体）→ Quicksand → 中文系统字体 */
+  font-family: 'Zen Maru Gothic', 'Quicksand', 'Nunito', -apple-system,
+    BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+  font-size: 15px;
+  line-height: 1.8;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+  transition: color 0.2s var(--bm-ease);
+}
+
+a:hover {
+  color: var(--bm-primary);
+}
+
+/* 标题统一使用更圆润的字重与字距 */
+h1,
+h2,
+h3,
+h4 {
+  letter-spacing: 0.4px;
+}
+
+/* 文字选中配色（与主题一致） */
+::selection {
+  background: rgba(184, 146, 246, 0.25);
+  color: var(--bm-text);
+}
+
+/* 焦点可访问性 */
+:focus-visible {
+  outline: 2px solid var(--bm-primary-2);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* 平滑滚动 */
+html {
+  scroll-behavior: smooth;
+}
+
+/* ============================ 通用工具类 ============================ */
+.bm-container {
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.bm-container-wide {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.bm-card {
+  background: var(--bm-card);
+  border-radius: var(--bm-radius);
+  box-shadow: var(--bm-shadow-card);
+  border: 1px solid var(--bm-border);
+  position: relative;
+  overflow: hidden;
+}
+
+/* 卡片顶部渐变光带（装饰性，不参与布局） */
+.bm-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--bm-gradient);
+  opacity: 0;
+  transition: opacity 0.3s var(--bm-ease);
+}
+
+.bm-card-hover {
+  transition: transform 0.3s var(--bm-ease-bounce), box-shadow 0.3s var(--bm-ease),
+    border-color 0.3s var(--bm-ease);
+}
+
+.bm-card-hover:hover {
+  transform: translateY(-6px);
+  box-shadow: var(--bm-shadow-hover);
+  border-color: transparent;
+}
+
+.bm-card-hover:hover::before {
+  opacity: 1;
+}
+
+.bm-section-title {
+  font-size: 15px;
+  font-weight: 700;
+  margin: 0 0 16px;
+  padding-left: 12px;
+  border-left: 3px solid var(--bm-primary);
+  line-height: 1.2;
+  letter-spacing: 0.3px;
+}
+
+/* 页标题（带渐变图标 pill）—— 新页面建议改用 <PageHeader /> 组件 */
+.bm-page-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 22px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--bm-border);
+  font-size: 21px;
+  font-weight: 800;
+  position: relative;
+}
+
+.bm-page-title .icon-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 13px;
+  background: var(--bm-gradient);
+  color: #fff;
+  font-size: 18px;
+  box-shadow: 0 8px 18px var(--bm-shadow-color);
+}
+
+.bm-page-title .count {
+  margin-left: auto;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--bm-text-sub);
+}
+
+/* 渐变文字 */
+.bm-gradient-text {
+  background: var(--bm-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+/* 渐变按钮（普通 <button>/<a> 也可套用） */
+.bm-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 20px;
+  border: none;
+  border-radius: 999px;
+  background: var(--bm-gradient);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 8px 20px var(--bm-shadow-color);
+  transition: transform 0.25s var(--bm-ease-bounce), box-shadow 0.25s var(--bm-ease),
+    filter 0.25s var(--bm-ease);
+}
+
+.bm-btn:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 14px 28px var(--bm-shadow-color);
+  filter: brightness(1.04);
+}
+
+.bm-btn:active {
+  transform: translateY(0) scale(0.99);
+}
+
+/* 通用 chip / 标签 */
+.bm-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 11px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  background: var(--bm-primary-soft);
+  color: var(--bm-primary-2);
+  font-weight: 600;
+  transition: all 0.2s var(--bm-ease);
+}
+
+.bm-subtitle {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  padding-left: 12px;
+  border-left: 3px solid var(--bm-primary);
+}
+
+/* ============================ Markdown 渲染 ============================ */
+.markdown-body {
+  font-size: 15.5px;
+  line-height: 1.85;
+  color: var(--bm-text);
+  word-wrap: break-word;
+}
+
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3,
+.markdown-body h4 {
+  margin: 1.6em 0 0.8em;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.markdown-body h1 {
+  font-size: 1.7em;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--bm-border);
+}
+
+.markdown-body h2 {
+  font-size: 1.4em;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--bm-border);
+}
+
+.markdown-body h3 {
+  font-size: 1.2em;
+}
+
+.markdown-body p {
+  margin: 0.9em 0;
+}
+
+.markdown-body ul,
+.markdown-body ol {
+  padding-left: 1.6em;
+  margin: 0.8em 0;
+}
+
+.markdown-body li {
+  margin: 0.3em 0;
+}
+
+.markdown-body blockquote {
+  margin: 1em 0;
+  padding: 0.6em 1em;
+  color: var(--bm-text-sub);
+  background: var(--bm-primary-soft);
+  border-left: 4px solid var(--bm-primary);
+  border-radius: 0 var(--bm-radius-sm) var(--bm-radius-sm) 0;
+}
+
+.markdown-body blockquote p {
+  margin: 0;
+}
+
+.markdown-body code {
+  padding: 0.2em 0.4em;
+  font-size: 0.88em;
+  background: var(--bm-primary-soft);
+  border-radius: 6px;
+  font-family: 'JetBrains Mono', Consolas, Monaco, monospace;
+}
+
+.markdown-body pre {
+  margin: 1.1em 0;
+  padding: 16px;
+  overflow-x: auto;
+  background: #26203c;
+  border-radius: var(--bm-radius-sm);
+  line-height: 1.6;
+}
+
+.markdown-body pre code {
+  padding: 0;
+  background: transparent;
+  color: #ece9f8;
+  font-size: 13.5px;
+}
+
+.markdown-body img {
+  max-width: 100%;
+  border-radius: var(--bm-radius-sm);
+}
+
+.markdown-body table {
+  width: 100%;
+  margin: 1.2em 0;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.markdown-body th,
+.markdown-body td {
+  padding: 8px 12px;
+  border: 1px solid var(--bm-border);
+}
+
+.markdown-body th {
+  background: var(--bm-primary-soft);
+  font-weight: 700;
+}
+
+.markdown-body hr {
+  margin: 2em 0;
+  border: none;
+  border-top: 1px solid var(--bm-border);
+}
+
+.markdown-body a {
+  color: var(--bm-primary);
+  border-bottom: 1px dashed var(--bm-primary);
+  transition: color 0.2s var(--bm-ease), border-color 0.2s var(--bm-ease);
+}
+
+.markdown-body a:hover {
+  color: var(--bm-primary-2);
+  border-bottom-color: var(--bm-primary-2);
+}
+
+/* 行号条装饰 */
+.markdown-body pre::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3px;
+  height: 100%;
+  background: var(--bm-gradient);
+  opacity: 0.6;
+  border-radius: 3px 0 0 3px;
+}
+
+.markdown-body pre {
+  position: relative;
+}
+
+/* ============================ 文本/布局小工具 ============================ */
+.text-sub {
+  color: var(--bm-text-sub);
+}
+
+.text-mute {
+  color: var(--bm-text-mute);
+}
+
+.flex {
+  display: flex;
+}
+
+.flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.gap-8 {
+  gap: 8px;
+}
+
+.gap-12 {
+  gap: 12px;
+}
+
+/* ============================ nprogress 配色 ============================ */
+#nprogress .bar {
+  background: var(--bm-gradient);
+  height: 2.5px;
+}
+
+#nprogress .peg {
+  box-shadow: 0 0 10px var(--bm-primary-2), 0 0 5px var(--bm-accent);
+}
+
+/* ============================ 滚动条 ============================ */
+::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #e0dbf2;
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #cbc3e8;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ============================ 路由过渡 ============================ */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s var(--bm-ease), transform 0.3s var(--bm-ease);
+}
+
+.fade-enter-from {
+  opacity: 0;
+  transform: translateY(12px) scale(0.99);
+}
+
+.fade-leave-to {
+  opacity: 0;
+  transform: translateY(-8px) scale(0.99);
+}
+
+/* ============================ 入场动画工具类 ============================ */
+/* 关键帧末尾回到自然态（transform: none），配合 backwards 填充：
+   动画结束立即释放合成层，避免元素停留在 GPU 层导致文字灰度抗锯齿发糊 */
+@keyframes bm-fade-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes bm-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes bm-scale-in {
+  from { opacity: 0; transform: scale(0.94); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes bm-slide-right {
+  from { opacity: 0; transform: translateX(-24px); }
+  to { opacity: 1; transform: none; }
+}
+
+.bm-fade-up { animation: bm-fade-up 0.5s var(--bm-ease) backwards; }
+.bm-fade-in { animation: bm-fade-in 0.4s var(--bm-ease) backwards; }
+.bm-scale-in { animation: bm-scale-in 0.4s var(--bm-ease-bounce) backwards; }
+.bm-slide-right { animation: bm-slide-right 0.4s var(--bm-ease) backwards; }
+
+@media (max-width: 768px) {
+  .bm-container,
+  .bm-container-wide {
+    padding: 0 14px;
+  }
+}
+
+/* ============================ 深色模式 (html.dark) ============================ */
+html.dark {
+  color-scheme: dark;
+
+  --bm-primary: #a99bff;
+  --bm-primary-2: #cf9ff2;
+  --bm-accent: #ff9ec0;
+  --bm-mint: #7fd8c5;
+  --bm-lemon: #ffd76e;
+
+  --bm-gradient: linear-gradient(135deg, #8f9dff 0%, #b68cf0 52%, #ef8fb4 100%);
+  --bm-gradient-soft: linear-gradient(
+    135deg,
+    rgba(143, 157, 255, 0.16) 0%,
+    rgba(182, 140, 240, 0.16) 52%,
+    rgba(239, 143, 180, 0.16) 100%
+  );
+  --bm-primary-soft: rgba(169, 155, 255, 0.14);
+  --bm-primary-soft-2: rgba(207, 159, 242, 0.12);
+  --bm-accent-soft: rgba(255, 158, 192, 0.12);
+
+  --bm-text: #eceaf7;
+  --bm-text-sub: #a8a4c0;
+  --bm-text-mute: #75708c;
+  --bm-border: #2c2740;
+  --bm-bg: #14121f;
+  --bm-card: #1b1828;
+
+  --bm-shadow: 0 4px 20px rgba(0, 0, 0, 0.32);
+  --bm-shadow-hover: 0 16px 34px rgba(0, 0, 0, 0.5);
+  --bm-shadow-card: 0 6px 22px rgba(0, 0, 0, 0.3);
+  --bm-shadow-color: rgba(143, 157, 255, 0.32);
+
+  --bm-glow-blue: rgba(143, 157, 255, 0.22);
+  --bm-glow-pink: rgba(239, 143, 180, 0.18);
+  --bm-glow-mint: rgba(127, 216, 197, 0.14);
+  --bm-dot: rgba(169, 155, 255, 0.16);
+  --bm-ring: rgba(239, 143, 180, 0.2);
+
+  /* 拉灯控件深色态：暖光更亮、星空更深 */
+  --lamp-night: #1b1a2a;
+  --lamp-cord: #7d6f9e;
+
+  /* 纸灯笼夜间态：灯身像一轮小月亮，偏冷 */
+  --lantern-paper: #f3e4ce;
+  --lantern-apricot: #171a24;   /* 夜间背景替换为墨色 */
+  --lantern-bamboo: rgba(180, 150, 120, 0.12);
+
+  /* Element Plus 深色下保持紫调主色 */
+  --el-color-primary: #a99bff;
+  --el-color-primary-light-3: #8d80e0;
+  --el-color-primary-light-5: #7166b8;
+  --el-color-primary-light-7: #544c88;
+  --el-color-primary-light-8: #453f70;
+  --el-color-primary-light-9: #362f57;
+  --el-color-primary-dark-2: #cf9ff2;
+  --el-bg-color: #1b1828;
+  --el-bg-color-overlay: #221e33;
+  --el-fill-color-blank: #1b1828;
+  --el-text-color-primary: #eceaf7;
+  --el-text-color-regular: #c8c3e0;
+}
+
+/* 深色下 Markdown / 阅读区适配 */
+html.dark .markdown-body {
+  color: #c8c3e0;
+}
+html.dark .markdown-body blockquote {
+  background: var(--bm-primary-soft);
+  color: var(--bm-text-sub);
+}
+html.dark .markdown-body code {
+  background: #2a2440;
+}
+html.dark .markdown-body th {
+  background: var(--bm-primary-soft);
+}
+html.dark .markdown-body th,
+html.dark .markdown-body td {
+  border-color: var(--bm-border);
+}
+
+/* 深色下滚动条 */
+html.dark ::-webkit-scrollbar-thumb {
+  background: #38324f;
+}
+html.dark ::-webkit-scrollbar-thumb:hover {
+  background: #484068;
+}
+
+/* 主题切换过渡，避免明暗突变生硬
+   注意：不过渡 box-shadow——阴影重绘代价极高，全站同时过渡会明显掉帧 */
+html.theme-anim,
+html.theme-anim *,
+html.theme-anim *::before,
+html.theme-anim *::after {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease !important;
+}

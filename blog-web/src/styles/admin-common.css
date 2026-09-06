@@ -1,0 +1,248 @@
+/**
+ * 后台管理页面公共样式
+ * 视觉方向：日系动漫风 —— 粉蓝紫梦幻配色、玻璃拟态、柔和阴影、轻盈动效
+ * 统一 .panel / .block-title / .dot / .head / .filters / .pager 等重复模式，
+ * Dashboard / PostEdit / PostsAdmin / CategoriesAdmin / TagsAdmin / ProfileAdmin 共用。
+ */
+
+/* ============================ 卡片面板容器 ============================ */
+.panel {
+  padding: 24px;
+  margin-bottom: 16px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* 卡片左上角渐变装饰（点缀用，不影响布局） */
+.panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 120px;
+  height: 120px;
+  background: radial-gradient(circle at 20% 20%, rgba(184, 146, 246, 0.12), transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.panel > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ============================ 区块标题 ============================ */
+.block-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 20px;
+  font-size: 16.5px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  position: relative;
+}
+
+.block-title .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--bm-gradient);
+  transform: rotate(45deg);
+  flex-shrink: 0;
+  box-shadow: 0 3px 8px var(--bm-shadow-color);
+}
+
+/* 标题右侧装饰线 */
+.block-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, var(--bm-border), transparent);
+  margin-left: 12px;
+  max-width: 200px;
+}
+
+/* ============================ 标题行 + 操作按钮 ============================ */
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.head .block-title {
+  margin: 0;
+}
+
+.head .block-title::after {
+  display: none;
+}
+
+/* ============================ 筛选栏 ============================ */
+.filters {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding: 16px 18px;
+  background: linear-gradient(135deg, rgba(138, 182, 255, 0.06) 0%, rgba(255, 176, 200, 0.06) 100%);
+  border-radius: var(--bm-radius-sm);
+  border: 1px solid var(--bm-border);
+}
+
+.filters .spacer {
+  flex: 1;
+}
+
+/* ============================ 分页器 ============================ */
+.pager {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 18px;
+}
+
+/* ============================ 表格美化 ============================ */
+:deep(.el-table) {
+  --el-table-header-bg-color: transparent;
+  --el-table-row-hover-bg-color: var(--bm-primary-soft);
+  --el-table-stripe-bg-color: rgba(138, 182, 255, 0.03);
+  border-radius: var(--bm-radius-sm);
+  overflow: hidden;
+}
+
+:deep(.el-table th.el-table__cell) {
+  background: linear-gradient(180deg, rgba(184, 146, 246, 0.08) 0%, transparent 100%);
+  color: var(--bm-text);
+  font-weight: 600;
+  font-size: 13.5px;
+  border-bottom: 2px solid var(--bm-border);
+}
+
+:deep(.el-table td.el-table__cell) {
+  border-bottom: 1px solid var(--bm-border);
+  font-size: 13.5px;
+}
+
+:deep(.el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell) {
+  background: rgba(138, 182, 255, 0.025);
+}
+
+:deep(.el-table__body tr:hover > td.el-table__cell) {
+  background: var(--bm-primary-soft) !important;
+}
+
+/* ============================ 表单美化 ============================ */
+:deep(.el-form-item__label) {
+  font-weight: 600;
+  color: var(--bm-text-sub);
+  font-size: 13.5px;
+}
+
+:deep(.el-input__wrapper),
+:deep(.el-textarea__inner),
+:deep(.el-select .el-input__wrapper) {
+  border-radius: 10px;
+  box-shadow: 0 0 0 1px var(--bm-border) inset;
+  transition: all 0.25s var(--bm-ease);
+}
+
+:deep(.el-input__wrapper:hover),
+:deep(.el-textarea__inner:hover),
+:deep(.el-select:hover .el-input__wrapper) {
+  box-shadow: 0 0 0 1px var(--bm-primary) inset;
+}
+
+:deep(.el-input.is-focus .el-input__wrapper),
+:deep(.el-textarea.is-focus .el-textarea__inner),
+:deep(.el-select.is-focused .el-input__wrapper) {
+  box-shadow: 0 0 0 2px rgba(184, 146, 246, 0.25), 0 0 0 1px var(--bm-primary-2) inset;
+}
+
+/* ============================ 按钮美化 ============================ */
+:deep(.el-button) {
+  border-radius: 10px;
+  font-weight: 500;
+  transition: all 0.25s var(--bm-ease);
+}
+
+:deep(.el-button:hover) {
+  transform: translateY(-2px);
+}
+
+:deep(.el-button:active) {
+  transform: translateY(0);
+}
+
+:deep(.el-button--primary) {
+  background: var(--bm-gradient);
+  border: none;
+  box-shadow: 0 6px 16px var(--bm-shadow-color);
+}
+
+:deep(.el-button--primary:hover) {
+  filter: brightness(1.08);
+  box-shadow: 0 10px 22px var(--bm-shadow-color);
+}
+
+:deep(.el-button--primary:active) {
+  filter: brightness(0.98);
+}
+
+/* ============================ Dialog 弹窗美化 ============================ */
+:deep(.el-dialog) {
+  border-radius: var(--bm-radius);
+  overflow: hidden;
+}
+
+:deep(.el-dialog__header) {
+  background: linear-gradient(135deg, rgba(138, 182, 255, 0.1) 0%, rgba(255, 176, 200, 0.1) 100%);
+  border-bottom: 1px solid var(--bm-border);
+  padding: 18px 22px;
+  margin-right: 0;
+}
+
+:deep(.el-dialog__title) {
+  font-weight: 700;
+  font-size: 16px;
+}
+
+:deep(.el-dialog__body) {
+  padding: 22px;
+}
+
+:deep(.el-dialog__footer) {
+  padding: 14px 22px 18px;
+  border-top: 1px solid var(--bm-border);
+}
+
+/* ============================ Tag 标签美化 ============================ */
+:deep(.el-tag) {
+  border-radius: 999px;
+  padding: 0 10px;
+  font-weight: 500;
+}
+
+/* ============================ 深色模式适配 ============================ */
+html.dark .panel {
+  background: var(--bm-card);
+}
+
+html.dark .filters {
+  background: linear-gradient(135deg, rgba(143, 157, 255, 0.08) 0%, rgba(239, 143, 180, 0.08) 100%);
+}
+
+html.dark :deep(.el-table th.el-table__cell) {
+  background: linear-gradient(180deg, rgba(169, 155, 255, 0.1) 0%, transparent 100%);
+}
+
+html.dark :deep(.el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell) {
+  background: rgba(143, 157, 255, 0.03);
+}
+
+html.dark :deep(.el-dialog__header) {
+  background: linear-gradient(135deg, rgba(143, 157, 255, 0.12) 0%, rgba(239, 143, 180, 0.12) 100%);
+}

@@ -1,0 +1,40 @@
+/**
+ * 前台页面公共布局样式
+ * 统一 .layout（双栏 flex）/ .content / .split / .pager 等重复模式，
+ * Categories / Tags / Archive / About / PostDetail 共用。
+ */
+
+/* 双栏布局：主内容 + 右侧 SidePanel */
+.bm-layout {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.bm-layout > .bm-layout-main {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 分隔线 + 标题行（分类/标签页选中后展示） */
+.bm-split {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 28px 0 16px;
+  padding-top: 22px;
+  border-top: 1px solid var(--bm-border);
+}
+
+/* 居中分页器 */
+.bm-pager-center {
+  display: flex;
+  justify-content: center;
+  padding-top: 8px;
+}
+
+@media (max-width: 900px) {
+  .bm-layout {
+    flex-direction: column;
+  }
+}
