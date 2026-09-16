@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-page-node-id="iHDFMr177RvDsa5di5YFBi">
+<head data-page-node-id="C0rInzgY7Vre0fG1iD26UA">
+<meta charset="UTF-8" data-page-node-id="tgDUQkP69vU7SzKARkBtet" />
+<meta name="viewport" content="width=device-width, initial-scale=1" data-page-node-id="63PeSudiCg7dCKHbAfzPUY" />
+<title>光影相册 & 技能栈 · 独立演示</title>
+<style>
+  /* 与项目同源的设计令牌（蓝紫粉渐变 / 18px 圆角 / 柔和阴影 / spring 曲线） */
+  :root {
+    --bm-primary: #7aa5f7;
+    --bm-primary-2: #b892f6;
+    --bm-accent: #ffb0c8;
+    --bm-text: #3a3a4d;
+    --bm-text-sub: #7a7a92;
+    --bm-text-mute: #a5a5bb;
+    --bm-bg: #fdfbff;
+    --bm-card: #ffffff;
+    --bm-border: #efeaf9;
+    --bm-primary-soft: #eef4ff;
+    --bm-primary-soft-2: #f7f0ff;
+    --bm-radius: 18px;
+    --bm-radius-sm: 12px;
+    --bm-shadow-card: 0 6px 22px rgba(58, 58, 77, 0.06);
+    --bm-shadow-color: rgba(184, 146, 246, 0.28);
+    --bm-gradient: linear-gradient(135deg, #8ab6ff 0%, #b892f6 52%, #ffb0c8 100%);
+    --bm-gradient-soft: linear-gradient(135deg, rgba(138,182,255,.1) 0%, rgba(184,146,246,.1) 52%, rgba(255,176,200,.1) 100%);
+    --bm-ease: cubic-bezier(.22,.61,.36,1);
+    --bm-ease-bounce: cubic-bezier(.34,1.56,.64,1);
+    --bm-module-gap: 14px;
+    --bm-module-radius: var(--bm-radius);
+    --bm-module-pad: 18px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 28px 16px 80px;
+    background: var(--bm-bg);
+    color: var(--bm-text);
+    font: 14px/1.6 "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  }
+  .wrap { max-width: 820px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+  h1 { margin: 0 0 4px; font-size: 20px; }
+  .tip { margin: 0 0 12px; color: var(--bm-text-sub); font-size: 13px; }
+
+  /* ===== 共用模块规范 ===== */
+  .bm-module {
+    padding: var(--bm-module-pad);
+    border: 1px solid var(--bm-border);
+    border-radius: var(--bm-module-radius);
+    background: var(--bm-card);
+    box-shadow: var(--bm-shadow-card);
+  }
+  .bm-module__head { display: flex; align-items: baseline; gap: 10px; margin-bottom: var(--bm-module-gap); }
+  .bm-module__title { display: flex; align-items: center; gap: 9px; margin: 0; font-size: 16px; font-weight: 700; }
+  .bm-module__dot {
+    width: 9px; height: 9px; border-radius: 3px;
+    background: var(--bm-gradient); transform: rotate(45deg);
+    box-shadow: 0 3px 8px var(--bm-shadow-color);
+  }
+  .bm-module__sub { font-size: 12.5px; color: var(--bm-text-mute); }
+
+  /* ===== 1. 光影相册 ===== */
+  .wall { display: grid; grid-template-columns: repeat(3, 1fr); grid-auto-rows: 1fr; gap: var(--bm-module-gap); aspect-ratio: 3 / 2; }
+  .cell {
+    position: relative; margin: 0; overflow: hidden;
+    border-radius: var(--bm-module-radius);
+    background: var(--bm-primary-soft-2);
+    box-shadow: var(--bm-shadow-card); cursor: pointer; isolation: isolate;
+  }
+  .cell--tall { grid-row: span 2; }
+  .cell__img { width: 100%; height: 100%; object-fit: cover; display: block;
+    transition: transform .55s var(--bm-ease), filter .4s var(--bm-ease); }
+  .cell__ph { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+    background: var(--bm-gradient-soft); color: var(--bm-text-mute); font-size: 12.5px; }
+  .cell__mask {
+    position: absolute; inset: 0; opacity: .75; pointer-events: none;
+    background: linear-gradient(to top, rgba(20,18,32,.55) 0%, rgba(20,18,32,.12) 38%, transparent 62%);
+    transition: opacity .35s var(--bm-ease);
+  }
+  .cell__shine {
+    position: absolute; top: -60%; left: -80%; width: 60%; height: 220%; opacity: 0;
+    background: linear-gradient(100deg, transparent 0%, rgba(255,255,255,.42) 50%, transparent 100%);
+    transform: rotate(18deg); pointer-events: none; transition: opacity .3s var(--bm-ease);
+  }
+  .cell:hover .cell__img { transform: scale(1.07); filter: saturate(1.08) brightness(1.03); }
+  .cell:hover .cell__mask { opacity: 1; }
+  .cell:hover .cell__shine { opacity: 1; animation: wall-shine .85s var(--bm-ease); }
+  @keyframes wall-shine { from { left: -80%; } to { left: 130%; } }
+  .cell__cap {
+    position: absolute; left: 12px; right: 12px; bottom: 10px;
+    display: flex; align-items: baseline; gap: 8px; color: #fff; font-size: 12.5px;
+    text-shadow: 0 1px 6px rgba(0,0,0,.35); transform: translateY(6px); opacity: .9;
+    transition: transform .35s var(--bm-ease), opacity .35s var(--bm-ease); pointer-events: none;
+  }
+  .cell:hover .cell__cap { transform: translateY(0); opacity: 1; }
+  .cell__title { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+
+  /* ===== 2. 技能栈 ===== */
+  .skills { list-style: none; margin: 0; padding: 0;
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px var(--bm-module-gap); }
+  .skill { opacity: 0; transform: translateY(10px);
+    transition: opacity .5s var(--bm-ease) var(--delay), transform .5s var(--bm-ease-bounce) var(--delay); }
+  .skill.is-in { opacity: 1; transform: none; }
+  .skill__top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 7px; font-size: 13px; }
+  .skill__name { font-weight: 600; }
+  .skill__value { flex: none; font-weight: 700; color: var(--bm-primary-2); font-variant-numeric: tabular-nums; }
+  .skill__track { height: 10px; border-radius: 999px; background: var(--bm-primary-soft); overflow: hidden; }
+  .skill__bar {
+    display: block; height: 100%; width: 0; border-radius: 999px;
+    background: var(--bm-gradient); box-shadow: 0 2px 10px var(--bm-shadow-color);
+    transition: width var(--bar-dur, .9s) var(--bm-ease) var(--delay);
+  }
+  .skill__bar::after {
+    content: ''; position: absolute; inset: 0; border-radius: 999px; transform: translateX(-100%);
+    background: linear-gradient(100deg, transparent 0%, rgba(255,255,255,.35) 48%, transparent 100%);
+  }
+  .skill.is-in .skill__bar::after { animation: bar-shine 2.8s var(--bm-ease) var(--delay) infinite; }
+  @keyframes bar-shine { 0% { transform: translateX(-100%); } 60%, 100% { transform: translateX(220%); } }
+
+  /* ===== 响应式 ===== */
+  @media (max-width: 900px) {
+    .wall { grid-template-columns: repeat(2, 1fr); aspect-ratio: auto; }
+    .cell { aspect-ratio: 1 / 1; }
+    .cell--tall { grid-row: span 2; aspect-ratio: 1 / 2; }
+  }
+  @media (max-width: 640px) { .skills { grid-template-columns: 1fr; } }
+  @media (max-width: 520px) {
+    .wall { grid-template-columns: 1fr; }
+    .cell, .cell--tall { grid-row: auto; aspect-ratio: 4 / 3; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .cell__img, .cell__mask, .cell__cap, .cell__shine, .skill, .skill__bar { transition: none; }
+    .cell:hover .cell__img { transform: none; }
+    .skill { opacity: 1; transform: none; }
+    .skill__bar::after { animation: none; }
+  }
+</style>
+</head>
+<body data-page-node-id="ZIzTR8A2FlyxJQW0DySqxH">
+<div class="wrap" data-page-node-id="Mk6Dk1QEevjYysYhrqYY3Y">
+  <h1 data-page-node-id="GsbFFjFH1p9FIivuuy33rH">光影相册 &amp; 技能栈</h1>
+  <p class="tip" data-page-node-id="zdNvIn98q4lpMdE9wOmkIm">纯前端实现（无动画库）：相册 5 格 Grid，首格竖向跨两行；技能条滚动进入视口后错峰增长。缩小窗口可见响应式降级，向下滚动触发技能条动画。</p>
+
+  <!-- 1. 光影相册 -->
+  <section class="bm-module" data-page-node-id="h5y92NcOTReBWcQRhluEpc">
+    <div class="bm-module__head" data-page-node-id="aOEa5Bgg6horTkW3k92bP0">
+      <h3 class="bm-module__title" data-page-node-id="ZERDXFHDms3TOUncuDMqry"><i class="bm-module__dot" data-page-node-id="5qfPzxQhdQFeI5Zhk6w2e8"></i>光影相册</h3>
+      <span class="bm-module__sub" data-page-node-id="w4GdPmTub6oO3jYoLUgHbh">悬停查看光影</span>
+    </div>
+    <div class="wall" id="wall" data-page-node-id="LHfSgN1oO04YNaaWHUYfbZ"></div>
+  </section>
+
+  <!-- 2. 技能栈 -->
+  <section class="bm-module" id="skillModule" data-page-node-id="DcTZcfhpKRmq1lBfErHGaT">
+    <div class="bm-module__head" data-page-node-id="bTBr9U6WzQYD1VKvb0Ozg2">
+      <h3 class="bm-module__title" data-page-node-id="N40X4pZG64bYqMzImnAzz8"><i class="bm-module__dot" data-page-node-id="e1wnZXcHbeSpeUURKqUWgk"></i>技能栈</h3>
+      <span class="bm-module__sub" data-page-node-id="ozOqGHeXYajS7x96GGrS0Y">滚动到此处触发</span>
+    </div>
+    <ul class="skills" id="skills" data-page-node-id="p4N1f9KljTaoyqBtEyZqmk"></ul>
+  </section>
+</div>
+
+<script>
+  /* ---------- 1. 光影相册：生成 5 格（首格跨两行），无图时用占位格 ---------- */
+  var photos = [
+    { src: '', title: '示例图 1（竖向跨两行）' },
+    { src: '', title: '示例图 2' },
+    { src: '', title: '示例图 3' },
+    { src: '', title: '示例图 4' },
+    { src: '', title: '示例图 5' }
+  ];
+  var wall = document.getElementById('wall');
+  photos.forEach(function (p, i) {
+    var fig = document.createElement('figure');
+    fig.className = 'cell' + (i === 0 ? ' cell--tall' : '');
+    fig.innerHTML =
+      (p.src ? '<img class="cell__img" src="' + p.src + '" alt="' + p.title + '" loading="lazy" />'
+             : '<div class="cell__ph"><span>' + p.title + '</span></div>') +
+      '<span class="cell__mask"></span><span class="cell__shine"></span>' +
+      '<figcaption class="cell__cap"><span class="cell__title">' + p.title + '</span></figcaption>';
+    wall.appendChild(fig);
+  });
+
+  /* ---------- 2. 技能栈：8 条，IntersectionObserver 触发 + 错峰增长 ---------- */
+  var skills = [
+    { name: 'Vue 3 / 组合式 API', percent: 92 },
+    { name: 'JavaScript / TypeScript', percent: 88 },
+    { name: 'CSS / 动画与响应式', percent: 85 },
+    { name: 'Vite / 前端工程化', percent: 80 },
+    { name: 'FastAPI / Python', percent: 78 },
+    { name: 'MySQL / Redis', percent: 72 },
+    { name: 'Git / 协作流程', percent: 75 },
+    { name: 'UI 设计 / 交互细节', percent: 70 }
+  ];
+  var STAGGER = 90, DURATION = 900;
+  var list = document.getElementById('skills');
+  var valueEls = [];
+  skills.forEach(function (s, i) {
+    var li = document.createElement('li');
+    li.className = 'skill';
+    li.style.setProperty('--delay', (i * STAGGER) + 'ms');
+    li.style.setProperty('--bar-dur', DURATION + 'ms');
+    li.innerHTML =
+      '<div class="skill__top"><span class="skill__name">' + s.name + '</span>' +
+      '<span class="skill__value">0%</span></div>' +
+      '<div class="skill__track" role="progressbar" aria-label="' + s.name + '" aria-valuemin="0" aria-valuemax="100">' +
+      '<span class="skill__bar"></span></div>';
+    list.appendChild(li);
+    valueEls.push(li.querySelector('.skill__value'));
+  });
+
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var bars = list.querySelectorAll('.skill__bar');
+
+  function run() {
+    list.querySelectorAll('.skill').forEach(function (li) { li.classList.add('is-in'); });
+    bars.forEach(function (bar, i) { bar.style.width = skills[i].percent + '%'; });
+    if (reduce) {
+      valueEls.forEach(function (el, i) { el.textContent = skills[i].percent + '%'; });
+      return;
+    }
+    var start = performance.now();
+    (function step(now) {
+      var elapsed = now - start;
+      skills.forEach(function (s, i) {
+        var t = Math.min(1, Math.max(0, (elapsed - i * STAGGER) / DURATION));
+        var eased = 1 - Math.pow(1 - t, 3);
+        valueEls[i].textContent = Math.round(s.percent * eased) + '%';
+      });
+      if (elapsed < DURATION + STAGGER * (skills.length - 1)) requestAnimationFrame(step);
+      else skills.forEach(function (s, i) { valueEls[i].textContent = s.percent + '%'; });
+    })(start);
+  }
+
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      if (e.isIntersecting) { run(); io.disconnect(); }
+    });
+  }, { threshold: 0.25 });
+  io.observe(document.getElementById('skillModule'));
+</script>
+</body>
+</html>
