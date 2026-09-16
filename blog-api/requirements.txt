@@ -13,3 +13,9 @@ passlib==1.7.4
 bcrypt==4.0.1
 python-multipart==0.0.20
 email-validator==2.2.0
+
+# 图片处理：app/api/v1/auth.py 导入 PIL（头像处理）
+Pillow==12.3.0
+
+# 验证脚本依赖：scripts/verify_*.py 用 requests 直接打 HTTP 接口
+requests==2.34.2

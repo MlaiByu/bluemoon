@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional
 
 from sqlalchemy import func, select
 from sqlalchemy.dialects.mysql import match as mysql_match
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import Session, load_only, selectinload
 
 from app.core.config import settings
 from app.core.exceptions import ConflictException, NotFoundException
@@ -25,6 +25,7 @@ from app.services.cache import (
     cache,
     hash_key,
     invalidate_post,
+    list_version,
     make_key,
 )
 from app.utils.markdown import count_words, make_summary
@@ -32,8 +33,28 @@ from app.utils.slug import slugify, unique_slug
 
 logger = logging.getLogger("bluemoon")
 
-# 阅读量在 Redis 累积到该阈值后回写 MySQL
-VIEW_FLUSH_THRESHOLD = 10
+# 阅读量在 Redis 累积到该阈值后回写 MySQL（可在 .env 中用 VIEW_FLUSH_THRESHOLD 覆盖）
+VIEW_FLUSH_THRESHOLD = settings.VIEW_FLUSH_THRESHOLD
+
+# 列表 / 归档只需要的列：显式排除 content（TEXT），避免把正文全文传一遍。
+# 注意：serialize_post(with_content=False) 只是不「输出」content，DB 仍然会传，
+# 必须在这里用 load_only 才是真的不查。
+_LIST_COLUMNS = (
+    Post.id,
+    Post.title,
+    Post.slug,
+    Post.summary,
+    Post.cover,
+    Post.status,
+    Post.is_top,
+    Post.views,
+    Post.word_count,
+    Post.published_at,
+    Post.created_at,
+    Post.updated_at,
+    Post.category_id,
+    Post.author_id,
+)
 
 
 # ---------------- 序列化 ----------------
@@ -80,6 +101,11 @@ def _base_query(db: Session):
     )
 
 
+def _list_query(db: Session):
+    """列表 / 归档专用：不查 content（TEXT）"""
+    return _base_query(db).options(load_only(*_LIST_COLUMNS))
+
+
 def _apply_order(stmt, order_by: str):
     """按 order_by 排序：views=热度、latest=创建时间、default=置顶+发布时间"""
     if order_by == "views":
@@ -110,10 +136,10 @@ def list_posts(
         "status": status,
         "order_by": order_by,
     }
-    cache_key = make_key(K_POST_LIST, hash=hash_key(params))
+    cache_key = make_key(K_POST_LIST, ver=list_version(), hash=hash_key(params))
 
     def _producer() -> Dict[str, Any]:
-        stmt = _base_query(db)
+        stmt = _list_query(db)
         count_stmt = select(func.count(Post.id))
 
         if keyword:
@@ -144,12 +170,14 @@ def list_posts(
         posts = db.execute(stmt).scalars().unique().all()
 
         items = [serialize_post(p, with_content=False) for p in posts]
-        # 视图数叠加 Redis 中未落库的增量
-        for it in items:
-            it["views"] = current_views(it["id"], it["views"])
+        # 只缓存 MySQL 基数；Redis 增量在缓存读出后再叠加（见下方），
+        # 否则增量会被写进缓存，缓存有效期内再叠加一次就会重复计数。
         return paginated(items, total, page, page_size)
 
-    return cache.get_or_set(cache_key, _producer, ttl=settings.CACHE_TTL_POST_LIST)
+    result = cache.get_or_set(cache_key, _producer, ttl=settings.CACHE_TTL_POST_LIST)
+    # paginated() 返回的是完整响应信封 {code,msg,data:{list,...}}
+    attach_views(result["data"]["list"])
+    return result
 
 
 # ---------------- 详情 ----------------
@@ -162,6 +190,28 @@ def current_views(post_id: int, base_views: int) -> int:
         return base_views + int(delta or 0)
     except (TypeError, ValueError):
         return base_views
+
+
+def attach_views(items: List[Dict[str, Any]]) -> None:
+    """给一批文章就地叠加未落库的阅读增量（一次 mget，替代逐条 get）"""
+    if not items or not cache.available:
+        return
+    ids = [it["id"] for it in items if it.get("id")]
+    if not ids:
+        return
+    raw = cache.mget([make_key(K_POST_VIEWS, id=i) for i in ids])
+    for it, delta in zip(items, raw):
+        if delta is None:
+            continue
+        try:
+            it["views"] = int(it.get("views") or 0) + int(delta)
+        except (TypeError, ValueError):
+            continue
+
+
+def _slug_of(db: Session, post_id: int) -> Optional[str]:
+    """取文章 slug（用于按 slug 失效详情缓存）"""
+    return db.query(Post.slug).filter(Post.id == post_id).scalar()
 
 
 def incr_views(db: Session, post_id: int) -> None:
@@ -191,49 +241,62 @@ def incr_views(db: Session, post_id: int) -> None:
                     {Post.views: Post.views + delta}
                 )
                 db.commit()
-                # 视图变化 → 详情与列表缓存失效
-                invalidate_post(post_id=post_id)
+                # 增量已落库 → 缓存里的基数过期了，必须连同 slug 详情一起失效，
+                # 否则详情/列表会拿旧基数再去加增量，出现重复计数或数字回退。
+                invalidate_post(slug=_slug_of(db, post_id), post_id=post_id)
     except Exception as exc:  # noqa: BLE001
         logger.warning("incr_views failed, fallback to db: %s", exc)
         db.query(Post).filter(Post.id == post_id).update({Post.views: Post.views + 1})
         db.commit()
 
 
-# 同一 IP 对同一文章的防刷锁时长（秒）
-VIEW_LOCK_TTL = 300  # 5 分钟内不重复计数
+# 同一访客（IP）对同一文章的去重窗口（秒）：窗口内不重复计数
+VIEW_DEDUP_TTL = settings.VIEW_DEDUP_TTL_SECONDS
 
 
-def record_view(db: Session, post_id: int, ip: str) -> bool:
+def record_view(db: Session, post_id: int, ip: str) -> Dict[str, Any]:
     """
-    上报一次有效阅读。
+    上报一次有效阅读（前端在用户持续阅读满 settings.VIEW_READ_THRESHOLD_SECONDS 秒后调用）。
 
-    防刷规则：
-    - 同一 IP 对同一文章 5 分钟内只计一次
-    - Redis 不可用时降级为直接 +1（不防刷）
-    - 返回 True 表示本次计为有效阅读，False 表示被防刷拦截
+    去重规则（保证同一访客不会把阅读数刷上去）：
+    - 同一 IP 对同一文章，在 VIEW_DEDUP_TTL_SECONDS 窗口内只计一次（Redis SET NX EX 原子加锁）
+    - Redis 不可用时降级为直接 +1（不防刷，但绝不丢计数）
+    - 返回 {"counted": 是否计入, "views": 该文章当前阅读数}
     """
-    # 1. 文章存在性校验
-    post = db.query(Post).filter(Post.id == post_id).first()
+    result: Dict[str, Any] = {"counted": False, "views": 0}
+
+    # 1. 文章存在且已发布（草稿不计阅读量）
+    post = (
+        db.query(Post)
+        .filter(Post.id == post_id, Post.status == PostStatus.PUBLISHED)
+        .first()
+    )
     if post is None:
-        return False
+        return result
 
     if not cache.available:
         # Redis 不可用，降级直接 +1
         incr_views(db, post_id)
-        return True
+        db.refresh(post)
+        result["counted"] = True
+        result["views"] = post.views
+        return result
 
     lock_key = make_key(K_POST_VIEW_LOCK, post_id=post_id, ip=ip)
 
-    # 2. 检查防刷锁：如果已存在，说明 5 分钟内已经计过
-    if cache.get(lock_key):
-        return False
+    # 2. 原子加锁：抢到锁 = 本次是窗口内的首次有效阅读；抢不到 = 已被去重拦截
+    acquired = cache.setex_if_absent(lock_key, VIEW_DEDUP_TTL, "1")
+    if not acquired:
+        # 被去重拦截：不计阅读数，但回传当前真实值，便于前端校准展示
+        result["views"] = current_views(post_id, post.views)
+        return result
 
-    # 3. 设置防刷锁（先加锁再加阅读量，防止并发穿透）
-    cache.set(lock_key, "1", ttl=VIEW_LOCK_TTL)
-
-    # 4. 阅读量 +1
+    # 3. 阅读量 +1
     incr_views(db, post_id)
-    return True
+    db.refresh(post)  # incr_views 可能已把 Redis 增量回写 MySQL，需取最新值
+    result["counted"] = True
+    result["views"] = current_views(post_id, post.views)
+    return result
 
 
 def get_post_by_id(db: Session, post_id: int, with_content: bool = True) -> Optional[Post]:
@@ -254,8 +317,14 @@ def get_post_by_slug(
 
 
 def get_post_detail_cached(db: Session, slug: str, allow_draft: bool = False) -> Dict[str, Any]:
-    """带缓存的文章详情（视图数为实时值）"""
-    cache_key = make_key(K_POST_DETAIL, slug=slug)
+    """带缓存的文章详情（视图数为实时值）
+
+    草稿与公开详情必须落在**不同**的缓存命名空间：allow_draft 只对超管为真，
+    若两者共用一个 key，管理员预览一次草稿就会把未发布内容写进公共缓存，
+    匿名访客在 TTL 内可直接读到草稿全文。
+    """
+    scope = "draft" if allow_draft else "pub"
+    cache_key = make_key(K_POST_DETAIL, scope=scope, slug=slug)
 
     def _producer() -> Optional[Dict[str, Any]]:
         post = get_post_by_slug(db, slug, allow_draft=allow_draft)
@@ -315,7 +384,10 @@ def create_post(db: Session, payload: PostIn, author_id: Optional[int] = None) -
     db.add(post)
     db.commit()
     db.refresh(post)
-    invalidate_post(slug=post.slug, post_id=post.id)
+    # 新建草稿不影响任何公开视图，无需让列表 / 统计 / 站点缓存整片失效
+    invalidate_post(
+        slug=post.slug, post_id=post.id, site_level=post.status == PostStatus.PUBLISHED
+    )
     return post
 
 
@@ -356,14 +428,17 @@ def update_post(db: Session, post_id: int, payload: PostIn) -> Post:
     db.commit()
     db.refresh(post)
 
+    # 任一阶段处于「已发布」都会影响公开列表，草稿互改则不必整片失效
+    site_level = was_published or post.status == PostStatus.PUBLISHED
+
     # 同步清理：编辑后不再被引用（且无其他文章引用）的文章图片随文删除
     try:
         image_service.sync_post_images(db, post, old_image_urls)
     except Exception as exc:  # noqa: BLE001
         logger.warning("sync post images after update failed: %s", exc)
 
-    invalidate_post(slug=old_slug)
-    invalidate_post(slug=post.slug, post_id=post.id)
+    invalidate_post(slug=old_slug, site_level=site_level)
+    invalidate_post(slug=post.slug, post_id=post.id, site_level=site_level)
     return post
 
 
@@ -374,26 +449,28 @@ def delete_post(db: Session, post_id: int) -> None:
     slug = post.slug
     # 删除前先提取本文引用的文章图片，删文后同步清理其独占的图片文件
     image_urls = image_service.extract_post_image_urls(post)
+    was_published = post.status == PostStatus.PUBLISHED
     db.delete(post)
     db.commit()
     try:
         image_service.remove_post_images(db, image_urls, post_id=post_id)
     except Exception as exc:  # noqa: BLE001
         logger.warning("remove post images after delete failed: %s", exc)
-    invalidate_post(slug=slug, post_id=post_id)
+    invalidate_post(slug=slug, post_id=post_id, site_level=was_published)
 
 
 # ---------------- 归档 ----------------
 def list_archive(db: Session) -> List[Dict[str, Any]]:
     """按 年-月 分组（仅已发布）"""
     stmt = (
-        _base_query(db)
+        _list_query(db)
         .where(Post.status == PostStatus.PUBLISHED)
         .order_by(Post.published_at.desc(), Post.id.desc())
     )
     posts = db.execute(stmt).scalars().unique().all()
 
     buckets: Dict[str, Dict[str, Any]] = {}
+    serialized: List[Dict[str, Any]] = []
     for p in posts:
         dt = p.published_at or p.created_at
         key = f"{dt.year}-{dt.month:02d}"
@@ -401,9 +478,12 @@ def list_archive(db: Session) -> List[Dict[str, Any]]:
             key, {"year": dt.year, "month": dt.month, "count": 0, "posts": []}
         )
         item = serialize_post(p, with_content=False)
-        item["views"] = current_views(item["id"], item["views"])
         bucket["posts"].append(item)
+        serialized.append(item)
         bucket["count"] += 1
+
+    # 归档一次可能包含全部文章，逐条 get 会打出 N 次 Redis 往返 → 批量叠加
+    attach_views(serialized)
 
     return sorted(buckets.values(), key=lambda b: (b["year"], b["month"]), reverse=True)
 

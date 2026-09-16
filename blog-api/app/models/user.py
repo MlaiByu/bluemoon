@@ -32,6 +32,11 @@ class User(Base, PKMixin, TimestampMixin):
     posts: Mapped[list["Post"]] = relationship(  # noqa: F821
         back_populates="author", lazy="dynamic"
     )
+    avatars: Mapped[list["UserAvatar"]] = relationship(  # noqa: F821
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="dynamic",
+    )
 
     @property
     def display_name(self) -> str:

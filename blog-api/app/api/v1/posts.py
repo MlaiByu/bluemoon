@@ -26,8 +26,10 @@ def list_posts(
     db: Session = Depends(get_db),
     current_user: User | None = Depends(get_optional_user),
 ):
-    """前台只返回已发布；后台（带 token）可传 status 查看全部"""
-    status = PostStatus.PUBLISHED if current_user is None else None
+    """前台只返回已发布；后台（超管 token）可查看全部（含草稿）"""
+    # 只认超管：普通登录账号（将来若引入）不得绕过 status 过滤看到草稿
+    is_admin = current_user is not None and current_user.is_superuser
+    status = None if is_admin else PostStatus.PUBLISHED
     return post_service.list_posts(
         db,
         page=page,
@@ -91,7 +93,8 @@ def rss_feed(request: Request, db: Session = Depends(get_db)):
     items = db.execute(stmt).scalars().all()
 
     def item_xml(p: Post) -> str:
-        link = f"{site_url}/#/post/{p.slug}"
+        # 前端路由为 history 模式（createWebHistory），不能带 hash 前缀
+        link = f"{site_url}/post/{p.slug}"
         pub = (p.published_at or p.created_at)
         pub_str = pub.strftime("%a, %d %b %Y %H:%M:%S +0800") if pub else ""
         desc = _xml_escape(p.summary or "")
@@ -130,7 +133,7 @@ def detail(
     data = post_service.get_post_detail_cached(db, slug, allow_draft=allow_draft)
     if data is None:
         raise NotFoundException("文章不存在或未发布")
-    data["views"] = post_service.current_views(data["id"], data.get("views", 0))
+    # 注意：get_post_detail_cached 内部已叠加 Redis 增量，这里不要再叠加一次
     data["neighbors"] = post_service.get_neighbors(db, data["id"])
     return success(data)
 
@@ -143,11 +146,16 @@ def record_view(
     ip: str = Depends(client_ip),
 ):
     """
-    前端在用户阅读满 10 秒后调用此接口上报阅读量。
-    后端通过 IP + 文章 ID 做 5 分钟防刷，避免重复计数。
+    前端在用户进入文章并持续阅读满 settings.VIEW_READ_THRESHOLD_SECONDS（默认 5 秒）后
+    调用本接口上报一次阅读。
+
+    去重：同一 IP 对同一文章在 VIEW_DEDUP_TTL_SECONDS（默认 5 分钟）窗口内只计一次，
+    窗口内重复进入 / 重复上报不会让阅读数重复累加。
+
+    返回：{"counted": 本次是否计入, "views": 该文章当前阅读数}
     """
-    counted = post_service.record_view(db, post_id, ip)
-    return success({"counted": counted})
+    data = post_service.record_view(db, post_id, ip)
+    return success(data)
 
 
 @router.get("/{post_id}", summary="文章详情（按 ID，后台用）")

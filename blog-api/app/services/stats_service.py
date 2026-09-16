@@ -12,6 +12,7 @@ from app.models.category import Category
 from app.models.post import Post, PostStatus
 from app.models.profile import Profile
 from app.models.user import User
+from app.services import image_service
 from app.services.cache import K_PROFILE, K_SITE, K_STATS, cache, make_key
 from app.services.post_service import current_views
 
@@ -44,6 +45,9 @@ def site_info(db: Session) -> Dict[str, Any]:
             "post_count": post_count,
             "category_count": db.query(func.count(Category.id)).scalar() or 0,
             "total_views": _total_views(db),
+            # 首页首屏 banner：取图库最新一张。前端 Home.vue 的 bannerSrc 优先用它，
+            # 从而不必等 getImages() 全量返回才发起 banner 图片请求（改善 LCP）。
+            "banner": image_service.latest_gallery_image(),
         }
 
     return cache.get_or_set(make_key(K_SITE), _producer, ttl=settings.CACHE_TTL_STATS)

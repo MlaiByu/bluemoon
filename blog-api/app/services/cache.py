@@ -22,9 +22,16 @@ logger = logging.getLogger("bluemoon")
 PREFIX = "bm:"
 
 # ---- key 命名空间 ----
-K_POST_DETAIL = "post:detail:{slug}"
+# 详情缓存必须带 scope（pub / draft）：草稿只有管理员可见，
+# 若与公开详情共用同一个 key，管理员预览一次草稿就会把未发布内容
+# 写进公共缓存，匿名访客在 TTL 内可直接读到。
+K_POST_DETAIL = "post:detail:{scope}:{slug}"
 K_POST_DETAIL_ID = "post:detail:id:{id}"
-K_POST_LIST = "post:list:{hash}"
+# 列表缓存带「版本号」，站点级失效只需 INCR 版本号，
+# 不必 SCAN 遍历删除全部列表 key（后者在 key 量大时是 O(N) 阻塞操作）。
+K_POST_LIST = "post:list:v{ver}:{hash}"
+K_POST_LIST_VER = "post:list:ver"
+# 兼容旧名（历史 key 仍在 Redis 中，靠 TTL 自然过期）
 K_POST_LIST_PREFIX = "post:list:"
 K_POST_VIEWS = "post:views:{id}"
 K_POST_VIEW_LOCK = "post:view:lock:{post_id}:{ip}"
@@ -32,7 +39,12 @@ K_STATS = "stats:{kind}"
 K_SITE = "site:info"
 K_CATEGORIES = "tax:categories"
 K_TOKEN_BLACKLIST = "token:blacklist:{jti}"
+# 改密时间戳：早于该时间签发的 token 一律失效（免去逐条拉黑 jti）
+K_TOKEN_INVALID_BEFORE = "token:invalid-before:{user_id}"
+# 登录失败计数（按 用户名+IP）
+K_LOGIN_FAIL = "auth:fail:{username}:{ip}"
 K_PROFILE = "site:profile"
+K_IMAGE_LIST = "upload:images:{scope}"
 
 
 def make_key(pattern: str, **kwargs: Any) -> str:
@@ -110,6 +122,15 @@ class Cache:
 
     def get(self, key: str) -> Optional[str]:
         return self._safe(lambda: self._client.get(key))  # type: ignore[union-attr]
+
+    def mget(self, keys: list[str]) -> List[Optional[str]]:
+        """批量取值：一次往返替代 N 次 get（列表 / 归档的阅读增量叠加用）"""
+        if not keys:
+            return []
+        return list(
+            self._safe(lambda: self._client.mget(keys), [None] * len(keys))  # type: ignore[union-attr]
+            or [None] * len(keys)
+        )
 
     def set(self, key: str, value: str, ttl: Optional[int] = None) -> bool:
         def _fn():
@@ -216,10 +237,22 @@ cache = Cache()
 
 
 # ---------------- 业务级缓存失效 ----------------
+def list_version() -> int:
+    """当前列表缓存版本号（key 里带版本，失效只需自增）"""
+    try:
+        return int(cache.get(make_key(K_POST_LIST_VER)) or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def bump_list_version() -> None:
+    """列表缓存整体失效：自增版本号，旧 key 靠 TTL 自然过期"""
+    cache.incr(make_key(K_POST_LIST_VER))
+
+
 def _invalidate_site_level() -> None:
     """清理站点级缓存：列表 / 分类 / 统计 / 站点信息（文章、分类变更时共用）"""
-    # 列表缓存整体失效（分页组合多，直接按前缀清）
-    cache.delete_prefix(K_POST_LIST_PREFIX)
+    bump_list_version()
     # 分类的 post_count 会跟着变，一并失效
     cache.delete(K_CATEGORIES)
     cache.delete(make_key(K_STATS, kind="overview"))
@@ -227,16 +260,30 @@ def _invalidate_site_level() -> None:
     cache.delete(make_key(K_SITE))
 
 
-def invalidate_post(slug: str | None = None, post_id: int | None = None) -> None:
-    """文章变更时清理相关缓存"""
+def invalidate_post(
+    slug: str | None = None, post_id: int | None = None, site_level: bool = True
+) -> None:
+    """文章变更时清理相关缓存。
+
+    site_level=False 用于「草稿保存」这类不影响任何公开视图的场景：
+    详情缓存仍要清（草稿内容变了），但列表 / 统计 / 站点缓存无需整片失效。
+    """
     keys = []
     if slug:
-        keys.append(make_key(K_POST_DETAIL, slug=slug))
+        # 公开与草稿两个命名空间都要清，避免旧值残留
+        keys.append(make_key(K_POST_DETAIL, scope="pub", slug=slug))
+        keys.append(make_key(K_POST_DETAIL, scope="draft", slug=slug))
     if post_id:
         keys.append(make_key(K_POST_DETAIL_ID, id=post_id))
     if keys:
         cache.delete(*keys)
-    _invalidate_site_level()
+    if site_level:
+        _invalidate_site_level()
+
+
+def invalidate_image_list() -> None:
+    """图库列表缓存失效（上传 / 删除后调用）"""
+    cache.delete(make_key(K_IMAGE_LIST, scope="all"))
 
 
 def invalidate_taxonomy() -> None:
@@ -256,6 +303,7 @@ def flush_view_deltas(db) -> int:
 
     keys: Iterable[str] = cache.keys("post:views:*")
     total = 0
+    flushed_ids: list[int] = []
     for key in keys:
         try:
             post_id = int(key.rsplit(":", 1)[-1])
@@ -271,7 +319,13 @@ def flush_view_deltas(db) -> int:
         db.query(Post).filter(Post.id == post_id).update(
             {Post.views: Post.views + delta}
         )
+        flushed_ids.append(post_id)
         total += 1
     if total:
         db.commit()
+        # 增量已落库，缓存里的基数随之过期：必须失效详情 / 列表 / 统计缓存，
+        # 否则会用「旧基数 + 已清空的增量」算出偏小的阅读数。
+        slugs = dict(db.query(Post.id, Post.slug).filter(Post.id.in_(flushed_ids)).all())
+        for pid in flushed_ids:
+            invalidate_post(slug=slugs.get(pid), post_id=pid)
     return total
