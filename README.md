@@ -397,6 +397,77 @@ blog-api/static/
 
 > **⚠️ 关于 `blog-api/tests/`**：`tests/test_smoke.py` 会写入**真实数据库**（包括修改 `profile.bio`）。在连着自己数据的开发库上跑之前请留意这一点，建议先备份或使用独立测试库。
 
+## 日常开发流程（Git）
+
+### 改完代码 → 提交 → 推送
+
+```bash
+git status                  # ?? 未跟踪 / M 已修改，先看清楚改了什么
+git add -A                  # 全部暂存；只想提交部分文件就写具体路径
+git commit -m "fix: 修正首页语录的随机逻辑"
+git push origin main
+```
+
+推送前扫一眼暂存内容，确认没把不该提交的东西带进来：
+
+```bash
+git status --short
+git ls-files blog-api/static/   # 只应该有 .gitkeep；出现图片说明忽略规则被改坏了
+```
+
+`.env`、`local.env.bat`、`.env.docker`、上传的图片、`node_modules/`、`.venv/`、`dist/` 都已在 `.gitignore` 里，正常不会误入。
+
+推送后想确认远端真的收到了：
+
+```bash
+git log --oneline -1            # 本地最新 commit
+git ls-remote origin            # 远端 refs/heads/main 的 SHA，两者应一致
+```
+
+### 代码改了，怎么让 Docker 生效
+
+镜像里跑的是**构建产物**，改完代码必须重建容器：
+
+```bash
+docker compose up -d --build api   # 只重建应用容器（数据库/缓存不受影响）
+docker compose logs -f api         # 确认起来了
+```
+
+本地非 Docker 开发不需要这步 —— Vite 与 uvicorn 都带热重载，存盘即生效。
+
+### 在新机器 / WSL / 服务器上拿到代码
+
+```bash
+git clone https://github.com/MlaiByu/bluemoon.git
+cd bluemoon
+```
+
+HTTPS 无需配置 SSH key；已配 key 的也可以用 `git clone git@github.com:MlaiByu/bluemoon.git`。
+
+> 在 WSL / Linux 上开发时，Windows 专用的 `start-all.bat` 用不了。要么按上文走 Docker，要么手动起服务：`.venv/bin/python blog-api/run.py` 与 `cd blog-web && npm run dev`。
+
+### 提交信息约定
+
+| 前缀 | 用途 |
+| --- | --- |
+| `feat:` | 新功能 |
+| `fix:` | 修 bug |
+| `docs:` | 文档 |
+| `chore:` | 杂项：依赖、脚本、配置 |
+| `refactor:` | 重构 |
+
+### 常见补救（建议都在推送前做）
+
+| 场景 | 命令 |
+| --- | --- |
+| commit message 写错了 | `git commit --amend -m "新的说明"` |
+| 撤销上一次 commit、但保留改动 | `git reset --soft HEAD~1` |
+| 把文件移出暂存区 | `git restore --staged <文件>` |
+| 丢弃某个文件的本地改动 | `git restore <文件>` ⚠️ 不可恢复 |
+| 推之前再核对一遍改动 | `git diff` / `git diff --staged` |
+
+> `reset --hard`、`push --force`、`clean -fd` 都会丢数据 —— 清空工作区或覆盖远端历史之前，先确认没有需要保留的东西。
+
 ## 常见问题
 
 | 现象 | 原因与处理 |
