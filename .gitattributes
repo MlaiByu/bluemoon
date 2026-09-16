@@ -1,0 +1,33 @@
+# ============================================================
+#  换行策略：仓库内统一 LF 存储，检出时按下方规则还原
+#  目的：任何平台、任何 core.autocrlf 设置下 clone 出来的文件
+#        都是「能直接跑」的换行格式
+# ============================================================
+
+* text=auto
+
+# Windows 批处理必须 CRLF，否则 cmd 解析 goto 标签与多行 if 块会出错。
+# 只依赖 core.autocrlf 不够：对方设为 false 时会拿到 LF 的 .bat 直接失灵。
+*.bat text eol=crlf
+*.bat.example text eol=crlf
+
+# Shell 脚本必须 LF，CRLF 会让 #!/usr/bin/env 解释器路径后带上 \r 而报错
+*.sh text eol=lf
+
+# ===== 二进制资源：禁止任何换行/编码转换 =====
+*.jpg  binary
+*.jpeg binary
+*.png  binary
+*.gif  binary
+*.webp binary
+*.bmp  binary
+*.ico  binary
+*.woff binary
+*.woff2 binary
+*.ttf  binary
+*.eot  binary
+*.zip  binary
+*.xlsx binary
+*.xls  binary
+*.docx binary
+*.pdf  binary

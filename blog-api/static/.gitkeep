@@ -1,0 +1,2 @@
+# 占位文件：确保 clone 后 blog-api/static/ 目录存在。
+# 上传接口会把图片写到这里（运行时产物，已被 .gitignore 排除）。

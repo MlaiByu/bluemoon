@@ -18,6 +18,8 @@ htmlcov/
 .env.production
 # 保留模板：!.env.example
 !.env.example
+# 本机路径覆盖脚本（含个人绝对路径），入口见 local.env.bat.example
+local.env.bat
 
 # ===== Node.js / Vite (blog-web) =====
 node_modules/
@@ -34,8 +36,13 @@ pnpm-debug.log*
 # ===== Redis 发行版（二进制工具，不入库） =====
 _tools/redis/
 
-# ===== 用户上传文件 =====
-blog-api/static/uploads/
+# ===== 用户上传文件（日期布局 + 站点级资产）=====
+# 运行时产物，部署环境各自生成。
+# 注意：必须写成 static/* 而非 static/ —— 忽略整个目录会让下面的
+# .gitkeep 例外失效（Git 不会进入被忽略的目录找例外文件），
+# 结果 clone 后 static/ 根本不存在，上传接口直接报错。
+blog-api/static/*
+!blog-api/static/.gitkeep
 
 # ===== 日志 =====
 *.log
