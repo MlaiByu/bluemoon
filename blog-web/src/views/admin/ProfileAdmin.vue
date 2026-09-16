@@ -80,6 +80,54 @@
               <div class="avatar-name">{{ account.nickname || user?.username || '博主' }}</div>
               <div class="avatar-desc">支持 JPG / PNG / GIF / WebP，最大 5MB</div>
               <div class="avatar-desc">系统会自动压缩到 512px 以内</div>
+              <div class="avatar-desc">更换头像不会删除旧图，旧头像自动存入下方历史</div>
+            </div>
+          </div>
+
+          <!-- 历史头像 -->
+          <div class="avatar-history">
+            <div class="history-head">
+              <span class="history-title">历史头像</span>
+              <span class="history-count">共 {{ avatarHistory.length }} 张（最多保留 {{ avatarLimit }} 张）</span>
+            </div>
+
+            <div v-loading="historyLoading" class="history-list">
+              <div
+                v-for="item in avatarHistory"
+                :key="item.id"
+                class="history-item"
+                :class="{ current: item.is_current }"
+              >
+                <el-avatar :size="56" :src="item.url" class="history-img" />
+                <span v-if="item.is_current" class="current-badge">当前</span>
+                <div class="history-meta">
+                  <span class="history-time">{{ item.uploaded_at }}</span>
+                  <div class="history-ops">
+                    <el-button
+                      v-if="!item.is_current"
+                      size="small"
+                      text
+                      type="primary"
+                      @click="restoreHistoryAvatar(item)"
+                    >
+                      恢复
+                    </el-button>
+                    <el-button
+                      v-if="!item.is_current"
+                      size="small"
+                      text
+                      type="danger"
+                      @click="deleteHistoryAvatar(item)"
+                    >
+                      删除
+                    </el-button>
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="!historyLoading && !avatarHistory.length" class="history-empty">
+                暂无历史头像，更换头像后旧头像会出现在这里
+              </div>
             </div>
           </div>
 
@@ -128,11 +176,12 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage } from 'element-plus/es/components/message/index'
 import { Camera, Check, Key, Loading } from '@element-plus/icons-vue'
 import MarkdownEditor from '@/components/MarkdownEditor.vue'
 import {
-  changePassword, getProfile, updateMe, updateProfile, uploadAvatar,
+  changePassword, deleteAvatar, getAvatarHistory, getProfile,
+  restoreAvatar, updateMe, updateProfile, uploadAvatar,
 } from '@/api'
 import { useUserStore } from '@/stores/user'
 import { useSiteStore } from '@/stores/site'
@@ -278,7 +327,8 @@ async function onAccountAvatarUpload({ file }) {
       user.value = store.user
       // 同步刷新前台 site store，保证前台头像立即更新
       siteStore.refreshProfile()
-      ElMessage.success('头像已更新')
+      ElMessage.success('头像已更新，旧头像已存入历史')
+      await loadAvatarHistory()
     } else {
       throw new Error('上传失败')
     }
@@ -290,9 +340,61 @@ async function onAccountAvatarUpload({ file }) {
   }
 }
 
+/* ---------- 历史头像 ---------- */
+const avatarHistory = ref([])
+const historyLoading = ref(false)
+const avatarLimit = ref(20)
+
+async function loadAvatarHistory() {
+  historyLoading.value = true
+  try {
+    avatarHistory.value = (await getAvatarHistory()) || []
+  } catch {
+    avatarHistory.value = []
+  } finally {
+    historyLoading.value = false
+  }
+}
+
+async function restoreHistoryAvatar(item) {
+  try {
+    const res = await restoreAvatar(item.id)
+    const url = res?.avatar?.url || item.url
+    account.avatar = url
+    store.updateUser({ avatar: url })
+    user.value = store.user
+    siteStore.refreshProfile()
+    ElMessage.success('已恢复该头像')
+    await loadAvatarHistory()
+  } catch {
+    /* 拦截器已提示 */
+  }
+}
+
+async function deleteHistoryAvatar(item) {
+  try {
+    await ElMessageBox.confirm('确定删除这张历史头像吗？删除后不可恢复。', '删除确认', {
+      type: 'warning',
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+      confirmButtonClass: 'el-button--danger',
+    })
+  } catch {
+    return
+  }
+  try {
+    await deleteAvatar(item.id)
+    ElMessage.success('已删除该历史头像')
+    await loadAvatarHistory()
+  } catch {
+    /* 拦截器已提示 */
+  }
+}
+
 onMounted(async () => {
   if (!store.user) await store.fetchMe()
   await load()
+  await loadAvatarHistory()
 })
 </script>
 
@@ -479,6 +581,105 @@ onMounted(async () => {
   font-size: 12px;
   color: var(--bm-text-sub);
   line-height: 1.6;
+}
+
+/* 历史头像 */
+.avatar-history {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--bm-border);
+}
+
+.history-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.history-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--bm-text);
+}
+
+.history-count {
+  font-size: 12px;
+  color: var(--bm-text-mute);
+}
+
+.history-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+  min-height: 60px;
+}
+
+.history-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--bm-border);
+  border-radius: var(--bm-radius-sm);
+  background: var(--bm-card);
+  transition: border-color 0.2s var(--bm-ease), box-shadow 0.2s var(--bm-ease);
+}
+
+.history-item:hover {
+  border-color: var(--bm-primary);
+  box-shadow: var(--bm-shadow-card);
+}
+
+.history-item.current {
+  border-color: var(--bm-primary-2);
+  background: var(--bm-primary-soft);
+}
+
+.current-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 600;
+  background: var(--bm-primary-2);
+  color: #fff;
+}
+
+.history-img {
+  flex: none;
+  border-radius: 50%;
+  border: 1px solid var(--bm-border);
+}
+
+.history-meta {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.history-time {
+  font-size: 11.5px;
+  color: var(--bm-text-mute);
+  white-space: nowrap;
+}
+
+.history-ops {
+  display: flex;
+  gap: 2px;
+  margin-left: -6px;
+}
+
+.history-empty {
+  grid-column: 1 / -1;
+  padding: 18px 0;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--bm-text-mute);
 }
 
 .account-form {

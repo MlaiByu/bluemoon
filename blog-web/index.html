@@ -4,12 +4,23 @@
     <meta charset="UTF-8" />
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌙</text></svg>" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      SEO 元信息（title / description / Open Graph / Twitter Card / canonical）
+      由服务端按请求路径注入到下方那对 seo 标记之间：
+        - 文章页 → 注入该文章的 title / description / og:image
+        - 其他页 → 注入站点级默认值
+      微信、QQ 等抓取链接预览时不执行 JS，因此必须由服务端注入才有分享卡片。
+      请勿删除下方那对标记；标记缺失时后端会原样返回本文件。
+      开发模式下 Vite 直接提供本文件，此处即为默认值。
+    -->
+    <!--seo-start-->
     <meta name="description" content="bluemoon 个人博客" />
+    <title>Bluemoon · 个人博客</title>
+    <!--seo-end-->
     <!-- 日系圆体字体：Zen Maru Gothic（二次元风格核心字体） -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700;900&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <title>Bluemoon · 个人博客</title>
   </head>
   <body>
     <div id="app"></div>

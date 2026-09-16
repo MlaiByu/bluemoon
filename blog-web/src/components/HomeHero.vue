@@ -2,7 +2,17 @@
   <!-- 首屏 Hero：随机背景图 + 随机文案 + 快捷导航 + 下滑进入主页 -->
   <section class="hero" :style="{ '--hero-bg': bannerSrc }">
     <div class="hero-banner" aria-hidden="true">
-      <img :src="bannerSrc" alt="" loading="eager" />
+      <!-- 首屏最大内容绘制元素：走 1024px WebP 衍生档 + 高优先级抓取；
+           原图放 data-original，衍生档缺失时由 onerror 兜底 -->
+      <img
+        :src="bannerThumb"
+        :data-original="bannerFull"
+        alt=""
+        loading="eager"
+        fetchpriority="high"
+        decoding="async"
+        @error="onImageError"
+      />
     </div>
 
     <!-- 装饰：漂浮光斑 + 随机星点 -->
@@ -56,6 +66,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { ArrowDown } from '@element-plus/icons-vue'
+import { onImageError, resolveImageUrl, resolveImageVariant } from '@/utils/format'
 
 const props = defineProps({
   site: { type: Object, default: () => ({}) },
@@ -71,6 +82,11 @@ const title = computed(() => props.site.title || 'BlueMoonの博客')
 const bio = computed(
   () => props.site.description || '一个喜欢折腾前端与 Python 的技术人'
 )
+
+/* 首屏是全屏大图：用 1024 档（图库原图动辄 600–900KB，衍生档约 35KB），
+   原图仅作为 onerror 兜底，避免历史图未回填衍生档时破图 */
+const bannerThumb = computed(() => resolveImageVariant(props.bannerSrc, 1024))
+const bannerFull = computed(() => resolveImageUrl(props.bannerSrc))
 
 /* ---------- 随机小星星 ---------- */
 // 预设颜色池：日系动漫风（粉、蓝、紫、薄荷、暖黄）
@@ -192,8 +208,10 @@ onBeforeUnmount(() => {
 .hero {
   position: relative;
   margin: -60px 0 0;
-  height: 100vh;
-  min-height: 640px;
+  /* 用 dvh 跟随移动端地址栏收放：100vh 恒等于「最大」视口高度，
+     地址栏展开时会遮挡底部内容；min() 避免横屏手机（高约 375px）留大片空白 */
+  height: 100dvh;
+  min-height: min(640px, 100dvh);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -606,6 +624,14 @@ html.dark .hero-links a:hover {
   .hero-links a {
     padding: 6px 14px;
     font-size: 12.5px;
+  }
+}
+
+/* 不支持 dvh 的浏览器回退到 vh */
+@supports not (height: 100dvh) {
+  .hero {
+    height: 100vh;
+    min-height: 640px;
   }
 }
 

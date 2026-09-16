@@ -35,18 +35,22 @@
         </el-button>
       </el-form>
 
-      <div class="tip">
-        默认账号 <code>admin</code> / 密码 <code>admin123</code>
-      </div>
+      <!--
+        默认口令提示只在开发构建存在：
+        用「动态 import + 常量条件」让生产构建把整个分支连同文案一起 tree-shaking 掉
+        （仅在模板里 v-if 一个常量变量是没用的，esbuild 不做跨函数常量传播，
+        文案仍会留在产物 JS 里，等于公开赠送后台账号）。
+      -->
+      <component :is="DevLoginHint" v-if="DevLoginHint" />
       <el-link :underline="false" class="back" @click="$router.push('/')">← 返回前台</el-link>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { defineAsyncComponent, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage } from 'element-plus/es/components/message/index'
 import { Lock, User } from '@element-plus/icons-vue'
 import { login } from '@/api'
 import { useUserStore } from '@/stores/user'
@@ -54,6 +58,11 @@ import { useUserStore } from '@/stores/user'
 const route = useRoute()
 const router = useRouter()
 const store = useUserStore()
+
+// 生产构建下这个三元表达式被求值为 null，动态 import 随之被摇掉
+const DevLoginHint = import.meta.env.DEV
+  ? defineAsyncComponent(() => import('@/components/DevLoginHint.vue'))
+  : null
 
 const formRef = ref()
 const loading = ref(false)

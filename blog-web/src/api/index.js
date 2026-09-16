@@ -31,6 +31,10 @@ export const uploadAvatar = (file) => {
     headers: { 'Content-Type': 'multipart/form-data' },
   })
 }
+// 历史头像：列表（按时间倒序，含 is_current 标记）/ 恢复 / 删除
+export const getAvatarHistory = () => request.get('/auth/avatars')
+export const restoreAvatar = (id) => request.post('/auth/avatar/restore', { id })
+export const deleteAvatar = (id) => request.delete(`/auth/avatar/${id}`)
 
 /* ---------------- 统计 / 站点 ---------------- */
 export const getSiteInfo = () => request.get('/stats/site')

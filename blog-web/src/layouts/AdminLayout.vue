@@ -113,7 +113,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessageBox } from 'element-plus'
+import { ElMessageBox } from 'element-plus/es/components/message-box/index'
 import { ArrowDown, DataLine, Document, EditPen, Expand, Fold, Folder, Picture, User, View } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
 import { logout as apiLogout } from '@/api'

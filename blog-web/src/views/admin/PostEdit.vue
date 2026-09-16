@@ -134,7 +134,8 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus/es/components/message/index'
+import { ElMessageBox } from 'element-plus/es/components/message-box/index'
 import { Delete, DocumentAdd, EditPen, Plus, Promotion, Refresh, Star, View } from '@element-plus/icons-vue'
 import MarkdownEditor from '@/components/MarkdownEditor.vue'
 import { createCategory, createPost, getCategories, getPostById, updatePost, uploadImage } from '@/api'

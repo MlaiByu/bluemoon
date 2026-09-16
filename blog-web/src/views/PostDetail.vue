@@ -4,7 +4,13 @@
     <div class="bm-layout-main content">
       <article v-if="post" class="bm-card article">
         <div v-if="post.cover" class="hero">
-          <img :src="coverUrl" :alt="post.title" />
+          <img
+            :src="coverThumb"
+            :data-original="coverUrl"
+            :alt="post.title"
+            decoding="async"
+            @error="onImageError"
+          />
         </div>
 
         <header class="article-head">
@@ -37,17 +43,25 @@
         <footer class="article-foot">
           <p class="updated">最后更新：{{ formatDate(post.updated_at, 'YYYY-MM-DD HH:mm', '-') }}</p>
           <div class="nav-posts">
-            <a v-if="neighbors.prev" class="nav-card" @click="go(neighbors.prev)">
+            <router-link
+              v-if="neighbors.prev"
+              class="nav-card"
+              :to="{ name: 'post', params: { slug: neighbors.prev.slug } }"
+            >
               <span class="label">← 上一篇</span>
               <span class="t">{{ neighbors.prev.title }}</span>
-            </a>
+            </router-link>
             <span v-else class="nav-card disabled">
               <span class="label">← 上一篇</span><span class="t">没有了</span>
             </span>
-            <a v-if="neighbors.next" class="nav-card right" @click="go(neighbors.next)">
+            <router-link
+              v-if="neighbors.next"
+              class="nav-card right"
+              :to="{ name: 'post', params: { slug: neighbors.next.slug } }"
+            >
               <span class="label">下一篇 →</span>
               <span class="t">{{ neighbors.next.title }}</span>
-            </a>
+            </router-link>
             <span v-else class="nav-card right disabled">
               <span class="label">下一篇 →</span><span class="t">没有了</span>
             </span>
@@ -72,16 +86,16 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import MarkdownView from '@/components/MarkdownView.vue'
 import SidePanel from '@/components/SidePanel.vue'
 import { getPostBySlug } from '@/api'
-import { formatDate, resolveImageUrl } from '@/utils/format'
+import { formatDate, onImageError, resolveImageUrl, resolveImageVariant } from '@/utils/format'
 import { useSiteStore } from '@/stores/site'
 import { useReadingTimer } from '@/composables/useReadingTimer'
+import { applyPostSeo } from '@/composables/useSeo'
 
 const route = useRoute()
-const router = useRouter()
 const siteStore = useSiteStore()
 
 const post = ref(null)
@@ -91,6 +105,8 @@ const loading = ref(false)
 // 作者头像统一从 siteStore 取，保证与全站头像一致
 const authorAvatar = computed(() => siteStore.avatar || post.value?.author?.avatar || '')
 const coverUrl = computed(() => resolveImageUrl(post.value?.cover))
+/* 文章头图是大图：走 1024 档，原图作为 onerror 兜底 */
+const coverThumb = computed(() => resolveImageVariant(post.value?.cover, 1024))
 const authorName = computed(() =>
   post.value?.author?.nickname || post.value?.author?.username || siteStore.nickname || 'B'
 )
@@ -98,8 +114,13 @@ const authorName = computed(() =>
 // 文章 ID 引用（用于阅读计时器）
 const postId = computed(() => post.value?.id || null)
 
-// 启动有效阅读计时（满 10 秒上报一次阅读量）
-useReadingTimer(postId)
+// 有效阅读统计：进入文章并持续阅读满 5 秒计一次，后端按 IP 去重
+const { views: reportedViews } = useReadingTimer(postId)
+
+// 上报成功后用服务端返回的最新阅读数校准展示，避免页面数字落后于真实值
+watch(reportedViews, (v) => {
+  if (typeof v === 'number' && post.value) post.value.views = v
+})
 
 async function fetchPost() {
   loading.value = true
@@ -107,15 +128,15 @@ async function fetchPost() {
     const res = await getPostBySlug(route.params.slug)
     post.value = res
     neighbors.value = res.neighbors || { prev: null, next: null }
-    document.title = `${res.title} · Bluemoon`
+    // SEO：title / description / OG / canonical 统一走 useSeo，与路由守卫的 setTitle
+    // 收敛到同一出口（此前 document.title 在 router 与本文件两处分别赋值）
+    applyPostSeo(res, { site: siteStore.site, resolveImage: resolveImageUrl })
   } catch {
     post.value = null
   } finally {
     loading.value = false
   }
 }
-
-const go = (p) => router.push({ name: 'post', params: { slug: p.slug } })
 
 onMounted(async () => {
   await siteStore.load()
@@ -304,6 +325,8 @@ watch(() => route.params.slug, fetchPost)
   border-color: transparent;
   transform: translateY(-3px);
   box-shadow: var(--bm-shadow-hover);
+  /* 卡片现为 <a>：不加这条会被全局 a:hover 的紫色字色带跑（.t 未单独设色） */
+  color: var(--bm-text);
 }
 
 .nav-card:hover::before {
@@ -321,7 +344,9 @@ watch(() => route.params.slug, fetchPost)
 }
 
 .nav-card.disabled:hover {
-  background: #f7f8fc;
+  /* 用令牌承接 disabled 的「退后」背景：明暗自动适配，
+     避免硬编码 #f7f8fc 在暗色下因特异性压过 html.dark .nav-card:hover 而闪白块 */
+  background: var(--bm-primary-soft);
   border-color: var(--bm-border);
   transform: none;
   box-shadow: none;

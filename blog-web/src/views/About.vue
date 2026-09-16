@@ -2,7 +2,6 @@
   <div class="bm-container layout">
     <div class="content bm-card" v-loading="loading">
       <div class="hero">
-        <span class="deco"></span>
         <div class="avatar-block">
           <div class="avatar-wrap">
             <el-avatar :size="96" :src="profile.avatar || ''" class="avatar">
@@ -39,6 +38,11 @@
       <div class="md">
         <MarkdownView :content="profile.content || '还没有填写自我介绍～'" />
       </div>
+
+      <!-- 视觉模块：技能栈（光影相册已迁至「图片」页，此处不再保留） -->
+      <div class="modules">
+        <SkillStack subtitle="滚动到此处触发" />
+      </div>
     </div>
 
     <SidePanel
@@ -54,6 +58,7 @@
 import { computed, onMounted, ref } from 'vue'
 import MarkdownView from '@/components/MarkdownView.vue'
 import SidePanel from '@/components/SidePanel.vue'
+import SkillStack from '@/components/SkillStack.vue'
 import { useSiteStore } from '@/stores/site'
 
 const siteStore = useSiteStore()
@@ -105,17 +110,6 @@ onMounted(async () => {
   gap: 24px;
   padding-bottom: 24px;
   border-bottom: 1px solid var(--bm-border);
-}
-
-.deco {
-  position: absolute;
-  top: -60px;
-  right: -60px;
-  width: 180px;
-  height: 180px;
-  border-radius: 50%;
-  background: var(--bm-gradient-soft);
-  pointer-events: none;
 }
 
 .avatar-block {
@@ -234,6 +228,14 @@ onMounted(async () => {
 
 .md {
   padding-top: 8px;
+}
+
+/* 视觉模块区：两模块间距与卡片一致，移动端堆叠 */
+.modules {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-top: 22px;
 }
 
 @media (max-width: 900px) {

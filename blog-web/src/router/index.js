@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import NProgress from 'nprogress'
 import { useUserStore } from '@/stores/user'
+import { resetSeo, setTitle } from '@/composables/useSeo'
 
 const routes = [
   {
@@ -64,8 +65,12 @@ router.beforeEach(async (to) => {
       return { name: 'home' }
     }
   }
-  const title = to.meta.title
-  document.title = title ? `${title} · Bluemoon` : 'Bluemoon · 个人博客'
+
+  // SEO：每次导航先恢复站点级默认（清掉上一页写入的 OG / canonical 残留，
+  // 否则从文章页跳回首页后分享出去仍显示上一篇文章），再设置本页标题。
+  // 文章页会在数据加载完成后由 applyPostSeo() 覆盖为文章级信息。
+  resetSeo()
+  setTitle(to.meta.title)
 })
 
 router.afterEach(() => NProgress.done())

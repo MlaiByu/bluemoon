@@ -57,7 +57,7 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage } from 'element-plus/es/components/message/index'
 import { Picture } from '@element-plus/icons-vue'
 import MarkdownView from './MarkdownView.vue'
 import { uploadImage } from '@/api'

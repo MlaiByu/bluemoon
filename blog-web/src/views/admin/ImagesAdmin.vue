@@ -149,7 +149,8 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { CopyDocument, Delete, Grid, Loading, Picture, UploadFilled, Warning } from '@element-plus/icons-vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus/es/components/message/index'
+import { ElMessageBox } from 'element-plus/es/components/message-box/index'
 import { batchDeleteImages, checkImageRefs, deleteImage, getImages, uploadImage } from '@/api'
 import { formatSize } from '@/utils/format'
 

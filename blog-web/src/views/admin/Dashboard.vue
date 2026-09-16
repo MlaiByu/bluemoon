@@ -160,7 +160,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage } from 'element-plus/es/components/message/index'
 import {
   DataLine, Delete, Document, EditPen, TrendCharts, View,
 } from '@element-plus/icons-vue'

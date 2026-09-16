@@ -9,7 +9,7 @@
           <span class="name">BlueMoonの博客</span>
         </router-link>
 
-        <nav class="nav">
+        <nav class="nav" aria-label="主导航">
           <router-link to="/">首页</router-link>
           <router-link to="/archives">归档</router-link>
           <router-link to="/categories">分类</router-link>
@@ -24,12 +24,21 @@
             size="small"
             clearable
             class="search"
+            aria-label="搜索文章"
             @keyup.enter="doSearch"
             @clear="doSearch"
           >
             <template #prefix><el-icon><Search /></el-icon></template>
           </el-input>
-          <el-button class="menu-btn" circle size="small" @click="mobileMenu = !mobileMenu">
+          <el-button
+            class="menu-btn"
+            circle
+            size="small"
+            :aria-label="mobileMenu ? '关闭菜单' : '打开菜单'"
+            :aria-expanded="mobileMenu"
+            aria-controls="mobile-nav"
+            @click="mobileMenu = !mobileMenu"
+          >
             <el-icon><component :is="mobileMenu ? Close : Menu" /></el-icon>
           </el-button>
         </div>
@@ -37,7 +46,7 @@
 
       <!-- 移动端展开菜单 -->
       <transition name="slide-down">
-        <nav v-show="mobileMenu" class="mobile-nav">
+        <nav v-show="mobileMenu" id="mobile-nav" class="mobile-nav" aria-label="移动端导航">
           <router-link to="/" @click="mobileMenu = false">首页</router-link>
           <router-link to="/archives" @click="mobileMenu = false">归档</router-link>
           <router-link to="/categories" @click="mobileMenu = false">分类</router-link>

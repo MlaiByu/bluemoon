@@ -28,21 +28,25 @@
         </div>
 
         <transition-group name="card" tag="div" class="grid" v-loading="loading">
-          <article
+          <!-- 用 router-link 而非 @click 的 article：让爬虫能发现内链、键盘可聚焦、
+               支持中键/Ctrl+点击新标签打开，同时保留整卡可点的手感 -->
+          <router-link
             v-for="(p, i) in posts"
             :key="p.id"
+            :to="{ name: 'post', params: { slug: p.slug } }"
             class="card"
             :style="{ animationDelay: `${i * 0.06}s` }"
-            @click="goPost(p)"
           >
             <div class="cover-wrap" :class="{ 'cover-empty': !p.cover && !pickCover(p) }">
               <img
                 v-if="p.cover || pickCover(p)"
                 class="cover"
-                :src="p.cover || pickCover(p)"
+                :src="coverThumb(p)"
+                :data-original="coverFull(p)"
                 :alt="p.title"
                 loading="lazy"
                 decoding="async"
+                @error="onImageError"
               />
               <span v-else class="cover-placeholder">🌙</span>
               <span class="cat-chip">{{ p.category?.name || '未分类' }}</span>
@@ -52,13 +56,12 @@
               <h2>{{ p.title }}</h2>
               <div class="meta">
                 <span>📅 {{ formatDate(p.published_at || p.created_at) }}</span>
-                <span>⏱ {{ readingMinutes(p.word_count) }} 分钟阅读</span>
                 <span>👁 {{ p.views || 0 }}</span>
               </div>
               <p class="summary">{{ p.summary || '（暂无摘要）' }}</p>
               <span class="read-more">阅读全文</span>
             </div>
-          </article>
+          </router-link>
         </transition-group>
 
         <EmptyState
@@ -73,16 +76,15 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import HomeHero from '@/components/HomeHero.vue'
 import HomeSidebar from '@/components/HomeSidebar.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { getPosts, getImages } from '@/api'
-import { formatDate, readingMinutes } from '@/utils/format'
+import { formatDate, onImageError, resolveImageUrl, resolveImageVariant } from '@/utils/format'
 import { useSiteStore } from '@/stores/site'
 
 const route = useRoute()
-const router = useRouter()
 const siteStore = useSiteStore()
 
 const site = computed(() => siteStore.site || {})
@@ -157,8 +159,6 @@ async function fetchPosts() {
   }
 }
 
-const goPost = (p) => router.push({ name: 'post', params: { slug: p.slug } })
-
 /* 从用户图片库中按文章 ID 稳定取一张作为封面回退 */
 function pickCover(post) {
   if (!gallery.value.length) return ''
@@ -166,16 +166,24 @@ function pickCover(post) {
   return gallery.value[idx].url
 }
 
+/* 封面走 400px WebP 衍生档（卡片实际显示宽度只有 240–400px）；
+   原图放在 data-original，供衍生档缺失时（如历史图未回填）由 onerror 兜底 */
+const coverThumb = (p) => resolveImageVariant(p.cover || pickCover(p), 400)
+const coverFull = (p) => resolveImageUrl(p.cover || pickCover(p))
+
 onMounted(async () => {
-  // 站点信息从 store 统一加载，保证全站数据一致
+  // 站点信息从 store 统一加载，保证全站数据一致（首屏 banner 也从这里拿）
   await siteStore.load()
-  // 图片库仅首页使用，单独加载
-  try {
-    gallery.value = (await getImages()) || []
-  } catch {
-    gallery.value = []
-  }
+  // 文章列表不等待图库：图库只用于没有封面时的兜底展示，
+  // 让它并行加载，避免一个全量图片接口把正文渲染拖在后面
   fetchPosts()
+  getImages()
+    .then((list) => {
+      gallery.value = list || []
+    })
+    .catch(() => {
+      gallery.value = []
+    })
 })
 
 // 顶部搜索框跳转 /search?q= 时同步过滤
@@ -286,6 +294,8 @@ watch(
   transform: translateY(-7px);
   box-shadow: var(--bm-shadow-hover);
   border-color: transparent;
+  /* 卡片现在是 <a>：不加这条会被全局 a:hover 的紫色字色带跑（h2 继承该颜色） */
+  color: var(--bm-text);
 }
 
 .card:hover::after {

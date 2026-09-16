@@ -4,10 +4,20 @@ import { getMe } from '@/api'
 const TOKEN_KEY = 'bm_token'
 const USER_KEY = 'bm_user'
 
+/** 读取缓存的用户信息：存储被写坏时不能让整个应用启动即白屏 */
+function readCachedUser() {
+  try {
+    return JSON.parse(localStorage.getItem(USER_KEY) || 'null')
+  } catch {
+    localStorage.removeItem(USER_KEY)
+    return null
+  }
+}
+
 export const useUserStore = defineStore('user', {
   state: () => ({
     token: localStorage.getItem(TOKEN_KEY) || '',
-    user: JSON.parse(localStorage.getItem(USER_KEY) || 'null'),
+    user: readCachedUser(),
   }),
   getters: {
     isLogin: (s) => !!s.token,

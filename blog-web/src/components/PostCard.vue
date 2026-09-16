@@ -17,12 +17,10 @@
         <span>{{ formatDate(post.published_at || post.created_at) }}</span>
         <span class="dot">·</span>
         <span><el-icon><View /></el-icon>{{ post.views }}</span>
-        <span class="dot">·</span>
-        <span>{{ readingTime }} 分钟</span>
       </div>
 
-      <h2 class="title" v-html="hl(post.title)"></h2>
-      <p class="summary" v-html="post.summary ? hl(post.summary) : '（暂无摘要）'"></p>
+      <h2 class="title" v-html="titleHtml"></h2>
+      <p class="summary" v-html="summaryHtml"></p>
 
       <div class="footer">
         <span class="more">阅读全文 →</span>
@@ -34,7 +32,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { formatDate, readingMinutes } from '@/utils/format'
+import { formatDate, resolveImageUrl } from '@/utils/format'
 
 const props = defineProps({
   post: { type: Object, required: true },
@@ -42,7 +40,6 @@ const props = defineProps({
 })
 const router = useRouter()
 
-const readingTime = computed(() => readingMinutes(props.post.word_count))
 const coverUrl = computed(() => resolveImageUrl(props.post.cover))
 
 // 搜索高亮：对文本做 HTML 转义，仅把命中片段（文章自身内容）包进 <mark>。
@@ -69,6 +66,12 @@ function hl(text) {
   out += escapeHtml(text.slice(last))
   return out
 }
+
+// 搜索高亮结果用 computed 缓存：直接在模板里调用函数会在每次重渲染时重新跑正则
+const titleHtml = computed(() => hl(props.post.title))
+const summaryHtml = computed(() =>
+  props.post.summary ? hl(props.post.summary) : '（暂无摘要）'
+)
 
 const go = () => router.push({ name: 'post', params: { slug: props.post.slug } })
 const goTag = (t) => router.push({ name: 'tags', query: { tag: t.id } })
