@@ -1,0 +1,159 @@
+# ============================================================
+#  bluemoon 全栈容器编排：MySQL 8 + Redis + 应用（API + 前端）
+#
+#  一条命令启动（推荐，会自动生成随机密钥）：
+#      scripts\docker-up.bat            # Windows
+#      ./scripts/docker-up.sh           # Linux / macOS
+#
+#  或手动两步：
+#      cp .env.docker.example .env      # 然后填 SECRET_KEY / 密码
+#      docker compose up -d --build
+#
+#  端口：只有 api 对外暴露（默认 8000）；mysql / redis 仅在内网，
+#        需要本机调试时取消各自 ports 段的注释（只绑 127.0.0.1）。
+# ============================================================
+
+name: bluemoon
+
+services:
+  # ----------------------------------------------------------
+  #  MySQL 8
+  # ----------------------------------------------------------
+  mysql:
+    image: mysql:8.0
+    container_name: bluemoon-mysql
+    restart: unless-stopped
+    # 锁死 8.0：blog-api/scripts/init_db.py 用
+    #   CREATE USER ... IDENTIFIED WITH mysql_native_password
+    # 建业务账号，而该插件在 MySQL 8.4 起被默认禁用（9.x 移除），
+    # 升到 8.4+ 后初始化脚本会直接报错。不要随手改 major 版本。
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_general_ci
+      - --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?未设置 MYSQL_ROOT_PASSWORD —— 请复制 .env.docker.example 为 .env 并填写，或改用 scripts/docker-up.sh}
+      MYSQL_DATABASE: ${MYSQL_DB:-bluemoon}
+      MYSQL_USER: ${MYSQL_USER:-bluemoon}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?未设置 MYSQL_PASSWORD —— 请复制 .env.docker.example 为 .env 并填写}
+      TZ: ${TZ:-Asia/Shanghai}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - bluemoon
+    healthcheck:
+      # 不带凭据：MySQL 服务可用时即使认证失败 mysqladmin ping 仍返回 0，
+      # 且初始化期间（仅 unix socket、未监听 3306）会正确判定为未就绪。
+      # 这样避开了在 healthcheck 里转义密码的麻烦。
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+    # 默认不暴露到宿主机。需要用本机客户端/工具连进来调试时取消注释：
+    # ports:
+    #   - "127.0.0.1:3306:3306"
+
+  # ----------------------------------------------------------
+  #  Redis（缓存 + 阅读量增量暂存）
+  # ----------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: bluemoon-redis
+    restart: unless-stopped
+    # appendonly yes：阅读量增量先累积在 Redis、达到阈值才回写 MySQL
+    # （VIEW_FLUSH_THRESHOLD），开 AOF 可避免容器重启丢掉未落库的增量。
+    # 刻意不设置 maxmemory / 淘汰策略：默认的 noeviction 不会误删增量 key，
+    # 缓存过期由代码里的 TTL 控制。
+    command: ["redis-server", "--appendonly", "yes", "--save", ""]
+    volumes:
+      - redis_data:/data
+    networks:
+      - bluemoon
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 5s
+    # ports:
+    #   - "127.0.0.1:6379:6379"
+
+  # ----------------------------------------------------------
+  #  应用：FastAPI 后端 + Vue 前端（同源单入口）
+  # ----------------------------------------------------------
+  api:
+    build:
+      # 上下文必须是仓库根：镜像里同时需要 blog-api/ 与 blog-web/
+      context: .
+      dockerfile: docker/api.Dockerfile
+    image: bluemoon-api:latest
+    container_name: bluemoon-api
+    restart: unless-stopped
+    # 用 tini 做 PID 1，正确转发 SIGTERM —— uvicorn 收到信号后会把
+    # Redis 里累积的阅读量回写 MySQL（见 main.py 的 lifespan 收尾逻辑）
+    init: true
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      # ---------- 应用 ----------
+      APP_ENV: ${APP_ENV:-production}
+      DEBUG: ${DEBUG:-false}
+      SECRET_KEY: ${SECRET_KEY:?未设置 SECRET_KEY —— 请复制 .env.docker.example 为 .env 并填写，或改用 scripts/docker-up.sh}
+      HOST: 0.0.0.0
+      PORT: "8000"
+      TZ: ${TZ:-Asia/Shanghai}
+      # ---------- MySQL（容器间用服务名做 DNS）----------
+      MYSQL_HOST: mysql
+      MYSQL_PORT: "3306"
+      MYSQL_USER: ${MYSQL_USER:-bluemoon}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?未设置 MYSQL_PASSWORD —— 请复制 .env.docker.example 为 .env 并填写}
+      MYSQL_DB: ${MYSQL_DB:-bluemoon}
+      MYSQL_ECHO: "false"
+      # init_db.py 需要高权限账号来建库 / 建业务账号
+      MYSQL_ADMIN_USER: root
+      MYSQL_ADMIN_PASSWORD: ${MYSQL_ROOT_PASSWORD:?未设置 MYSQL_ROOT_PASSWORD —— 请复制 .env.docker.example 为 .env 并填写}
+      # 首次启动自动建表灌种子数据；已初始化过会幂等跳过。设为 false 可关闭。
+      AUTO_INIT_DB: ${AUTO_INIT_DB:-true}
+      # ---------- Redis ----------
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_ENABLED: ${REDIS_ENABLED:-true}
+      # ---------- 前端产物位置（对应 config.py 的 FRONTEND_DIST）----------
+      FRONTEND_DIST: /app/frontend-dist
+      # ---------- 站点信息 ----------
+      BLOG_TITLE: ${BLOG_TITLE:-Bluemoon}
+      BLOG_SUBTITLE: ${BLOG_SUBTITLE:-一个安静写字的地方}
+      BLOG_DESCRIPTION: ${BLOG_DESCRIPTION:-记录生活、技术与思考的个人博客}
+      BLOG_AUTHOR: ${BLOG_AUTHOR:-bluemoon}
+      # ---------- CORS / 代理 ----------
+      # 同源单入口部署下浏览器不会发跨域请求，这里只是兜底
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8000}
+      # 容器直连时留空：client_ip() 不信任任何转发头。
+      # 若在前面再加一层反向代理（nginx/traefik），必须填该代理的地址，
+      # 否则按 IP 的阅读去重与登录限流会失效 —— 详见 README「客户端真实 IP」。
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
+    ports:
+      # 宿主机端口可通过 .env 的 API_PORT 调整
+      - "${API_PORT:-8000}:8000"
+    volumes:
+      # 上传图片/头像/图库持久化到宿主机目录：
+      #   1) 与本地开发共用同一份素材，docker 化后能直接看到已有图片
+      #   2) 备份/迁移只需拷贝这个目录
+      # 该目录在仓库里由 blog-api/static/.gitkeep 占位，clone 后必然存在。
+      - ./blog-api/static:/app/static
+    networks:
+      - bluemoon
+    # 健康检查继承自镜像里的 HEALTHCHECK（/api/v1/health）
+
+networks:
+  bluemoon:
+    driver: bridge
+
+volumes:
+  # 命名卷由 Docker 管理，实际位置可用 docker volume inspect 查看
+  mysql_data:
+  redis_data:

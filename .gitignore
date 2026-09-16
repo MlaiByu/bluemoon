@@ -20,6 +20,9 @@ htmlcov/
 !.env.example
 # 本机路径覆盖脚本（含个人绝对路径），入口见 local.env.bat.example
 local.env.bat
+# Docker 部署配置（含随机密钥与数据库密码），模板见 .env.docker.example
+.env.docker
+.env.docker.local
 
 # ===== Node.js / Vite (blog-web) =====
 node_modules/

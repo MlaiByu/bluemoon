@@ -1,0 +1,61 @@
+# ============================================================
+#  构建上下文 = 仓库根目录（见 docker-compose.yml 的 build.context）
+#  这里排除的东西不会进入镜像，也不参与构建缓存计算。
+# ============================================================
+
+# ---- 版本控制与编辑器 ----
+.git
+.gitignore
+.gitattributes
+.github
+.idea
+.vscode
+
+# ---- Python：本地虚拟环境与缓存 ----
+.venv/
+**/__pycache__/
+**/*.py[cod]
+**/.pytest_cache/
+**/*.egg-info/
+
+# ---- 本机配置：绝不进镜像 ----
+# 注意：docker build 读的是文件系统而不是 git 索引，
+# .gitignore 拦不住它，必须在这里显式排除，否则本机密码会被打进镜像层。
+blog-api/.env
+blog-api/.env.local
+local.env.bat
+.env
+.env.docker
+.env.local
+
+# ---- 前端：依赖与构建产物都在镜像内重新生成 ----
+blog-web/node_modules/
+blog-web/dist/
+
+# ---- 用户上传的图片：运行时由卷挂载，不固化进镜像 ----
+# 与 .gitignore 同理：必须写成 static/* 而不是 static/，
+# 否则下面的例外规则会被忽略目录吞掉。
+blog-api/static/*
+!blog-api/static/.gitkeep
+
+# ---- 本地工具、文档、日志、自检产物 ----
+_tools/
+logs/
+docs/
+.workbuddy/
+*.log
+shot-*.png
+*-screenshot.png
+# 注意：这里刻意不排除根级 scripts/ ——
+# 不带前导斜杠的 pattern 在 .dockerignore 里可能命中任意层级的同名目录，
+# 写成 scripts/ 会连带把 blog-api/scripts/ 排除掉，
+# 结果镜像里没有 init_db.py，entrypoint 的数据库初始化必然失败。
+# 根级 scripts/ 只有几个小脚本，进上下文但不被 Dockerfile COPY，无副作用。
+
+# ---- 测试：不需要进运行时镜像 ----
+blog-api/tests/
+
+# ---- 容器相关文件本身 ----
+# Dockerfile 与 entrypoint 由构建阶段按需 COPY，其余不需要进上下文
+docker-compose.yml
+.env.docker.example

@@ -109,6 +109,108 @@ copy local.env.bat.example local.env.bat
 
 `local.env.bat` 已被 `.gitignore` 忽略，可以放心填本机路径，不会上传。
 
+## Docker 部署（推荐：一条命令跑起来）
+
+本机只需装 **Docker**，不必单独安装 MySQL / Redis / Python / Node —— 全部跑在容器里。适合快速体验、部署到服务器，或交给别人复现。
+
+### 一条命令
+
+```bash
+# Windows
+scripts\docker-up.bat
+
+# Linux / macOS
+./scripts/docker-up.sh
+```
+
+脚本会自动完成：生成含随机密钥的 `.env` → 构建镜像 → 启动 MySQL、Redis、应用 → 等待健康检查通过 → 打印访问地址。
+
+想自己控制配置，也可以手动两步：
+
+```bash
+cp .env.docker.example .env      # Windows: copy .env.docker.example .env
+# 填写 SECRET_KEY、MYSQL_ROOT_PASSWORD、MYSQL_PASSWORD
+docker compose up -d --build
+```
+
+启动后访问 <http://localhost:8000>，后台入口 `/admin/login`，账号 `admin / admin123`。
+
+### 服务拓扑
+
+```
+                   ┌────────────── 浏览器 ──────────────┐
+                   │      http://localhost:8000         │
+                   └────────────────┬───────────────────┘
+                                    │ 唯一入口
+                   ┌────────────────▼───────────────────┐
+                   │  api    FastAPI + Vue 构建产物      │
+                   │  8000   API / 静态资源 / SPA 同源   │
+                   └───────┬─────────────────┬──────────┘
+                           │ mysql:3306      │ redis:6379
+              ┌────────────▼──────────┐ ┌────▼─────────────────┐
+              │  mysql  8.0           │ │  redis  7-alpine     │
+              │  volume: mysql_data   │ │  volume: redis_data  │
+              └───────────────────────┘ └──────────────────────┘
+```
+
+**前端刻意不单独开容器。** `blog-api/app/main.py` 的 SPA fallback 要在服务端把文章级 SEO 元信息注入 `index.html`（微信/QQ 抓取分享卡片依赖它，抓取器不执行 JS）；把 `index.html` 交给独立 nginx 托管会让这条链路失效。而前端 axios 的 baseURL 是相对路径 `/api/v1`，与后端同源即可，本来也不需要反向代理 —— 所以正确的形态是「后端托管前端产物」，一个容器、一个入口。
+
+### 服务、端口与卷
+
+| 服务 | 镜像 | 端口 | 卷 / 挂载 | 说明 |
+| --- | --- | --- | --- | --- |
+| `api` | 本地构建 `docker/api.Dockerfile` | **8000 → 8000** | `./blog-api/static` → `/app/static` | 唯一对外入口：API + 前端 + 上传图片 |
+| `mysql` | `mysql:8.0` | 仅容器内网 3306 | `mysql_data`（命名卷） | 库表数据持久化 |
+| `redis` | `redis:7-alpine` | 仅容器内网 6379 | `redis_data`（命名卷） | 开 AOF，避免阅读量增量丢失 |
+
+- 数据库与缓存**默认不对宿主机暴露端口**。需要用本机客户端连进去调试时，取消 `docker-compose.yml` 中对应 `ports:` 的注释（只绑 `127.0.0.1`）。
+- 上传图片挂在宿主机目录 `blog-api/static/`，与本地开发共用同一份素材：容器化后既有图片直接可见，备份只需拷这个目录。
+
+### 环境变量
+
+集中在仓库根目录的 `.env`（从 `.env.docker.example` 复制）。它只作为 compose 的变量插值来源，浏览器访问不涉及。
+
+| 变量 | 必填 | 说明 |
+| --- | --- | --- |
+| `SECRET_KEY` | ✅ | JWT 签名密钥；`APP_ENV=production` 时不足 32 位会拒绝启动 |
+| `MYSQL_ROOT_PASSWORD` | ✅ | 首次建库与建业务账号用 |
+| `MYSQL_PASSWORD` | ✅ | 业务账号密码 |
+| `API_PORT` | — | 宿主机端口，默认 8000 |
+| `APP_ENV` / `DEBUG` | — | 默认 `production` / `false`（关闭 `/docs`） |
+| `AUTO_INIT_DB` | — | 默认 `true`：启动时幂等地建表并灌演示数据 |
+| `REDIS_ENABLED` | — | 默认 `true`；置 `false` 完全关闭缓存 |
+| `TRUSTED_PROXIES` | — | 默认留空，见下方「客户端真实 IP」 |
+
+### 常用操作
+
+| 目的 | 命令 |
+| --- | --- |
+| 查看应用日志 | `docker compose logs -f api` |
+| 查看容器状态 | `docker compose ps` |
+| 进入容器 | `docker compose exec api sh` |
+| 重跑数据库初始化 | `docker compose exec api python scripts/init_db.py` |
+| 改代码后只重建应用 | `docker compose up -d --build api` |
+| 停止（保留数据） | `scripts\docker-down.bat` 或 `./scripts/docker-down.sh` |
+| 停止并清空数据 | `docker compose down -v` ⚠️ 数据库与缓存卷一并删除 |
+
+### 三个需要知道的点
+
+**1. 客户端真实 IP 会受影响**
+
+Docker Desktop（Windows / macOS）的端口映射会把所有来访者的源 IP 改写成网关地址，后端看到的都是同一个 IP。这会削弱两处按 IP 的机制：文章「停留 5 分钟才 +1」的去重窗口，以及登录失败按「用户名 + IP」的限流粒度。
+
+- 在 **Linux 主机上直接跑 Docker** 时源 IP 正常保留，不受影响；
+- 若在 Windows / macOS 上对公网提供服务，请在前面加一层反向代理（nginx / traefik），由它写入 `X-Forwarded-For`，并把 `TRUSTED_PROXIES` 设成该代理的地址（如 `172.18.0.0/16`）。
+- 留空时后端**完全不采信任何转发头** —— 这是刻意的防伪造设计（否则任何人伪造 XFF 就能绕过限流），不要为了「拿到真实 IP」而随手填 `*`。
+
+**2. mysql 镜像锁在 8.0，不要升 major**
+
+`blog-api/scripts/init_db.py` 用 `IDENTIFIED WITH mysql_native_password` 创建业务账号，而该插件在 MySQL 8.4 起被默认禁用（9.x 移除）。升到 8.4+ 后容器初始化会直接报错。
+
+**3. 首次启动会慢一些**
+
+api 容器要先等 MySQL 健康检查通过，再执行一次幂等的建库建表与种子数据，最后才启动 uvicorn。首次约 1–2 分钟属正常，之后启动会跳过已完成的初始化，很快。
+
 ## 前置依赖准备
 
 ### MySQL 8
@@ -221,9 +323,18 @@ bluemoon/
 │   ├── index.html
 │   ├── vite.config.js
 │   └── package.json
+├── docker/                    # 容器化
+│   ├── api.Dockerfile         # 多阶段：构建前端产物 + 运行后端
+│   └── entrypoint.sh          # 等 MySQL → 幂等初始化库 → 启动 uvicorn
+├── docker-compose.yml         # MySQL + Redis + 应用 编排（网络/卷/依赖顺序）
+├── .dockerignore              # 构建上下文排除规则（含 .env，防密码进镜像）
+├── .env.docker.example        # Docker 部署变量模板（复制为根目录 .env）
 ├── scripts/                   # 启动器与运维脚本
 │   ├── run-backend.bat        # 后端启动器（由 start-all.bat 调用）
 │   ├── run-frontend.bat       # 前端启动器
+│   ├── docker-up.bat / .sh    # 一键容器化启动
+│   ├── docker-down.bat / .sh  # 一键下线（保留数据卷）
+│   ├── gen_docker_env.py      # 生成含随机密钥的 .env
 │   └── verify_*.py            # 数据布局 / 头像 / 兼容性自检脚本
 ├── docs/                      # 设计与审查文档
 ├── _tools/                    # 本地工具目录（Redis 发行版放这里，不入库）
@@ -299,6 +410,10 @@ blog-api/static/
 | `start-all.bat` 报找不到 MySQL / Redis | 复制 `local.env.bat.example` 为 `local.env.bat`，把 `MYSQL` / `REDIS` 指向本机实际路径 |
 | 服务「时好时坏」或报 `os error 4551` | Windows Smart App Control 拦截了未签名的 Python 解释器，见上方说明 |
 | 想彻底关掉缓存 | `.env` 里设 `REDIS_ENABLED=false` |
+| `docker compose up` 报未设置 `SECRET_KEY` | 用 `scripts/docker-up.bat` 自动生成，或先 `cp .env.docker.example .env` 并填写必填项 |
+| Docker 里改了代码不生效 | 镜像里跑的是构建产物，需重建：`docker compose up -d --build api` |
+| 容器起来了但 8000 打不开 | `docker compose ps` 看 api 是否 healthy，`docker compose logs api` 看初始化进度（首次 1–2 分钟） |
+| Docker 版阅读数不涨 | Docker Desktop 下所有访客共享网关 IP，5 分钟去重窗口会把它们合并计数，见「客户端真实 IP」 |
 
 ## 许可
 
