@@ -1,0 +1,69 @@
+BlueMoon 博客 · 非商业使用许可
+BlueMoon Blog · Non-Commercial License
+Copyright (c) 2026 MlaiByu. All rights reserved.
+======================================================================
+
+【中文】
+
+你可以自由地：
+
+  1. 浏览、克隆、部署并运行本项目，用于个人学习、研究，或作为你自己的
+     非商业个人博客使用；
+  2. 阅读源码、参考其中的实现思路，并将其中的技术方案应用于你自己的
+     非商业项目；
+  3. 在完整保留本许可全文与版权声明的前提下，非商业地复制、修改、
+     分发本项目及其衍生作品。
+
+你不得：
+
+  1. 将本项目或其修改版本用于任何商业目的，包括但不限于：
+       - 销售本项目，或销售以本项目为基础的产品/服务；
+       - 将本项目作为商业产品或商业服务的组成部分；
+       - 提供基于本项目的商业托管、代运营、付费部署服务；
+       - 用于付费课程、付费专栏、商业培训材料；
+  2. 移除、隐藏或篡改本许可与版权声明；
+  3. 以本项目作者的名义进行宣传，或暗示作者对你的使用行为提供背书。
+
+商业授权：如需商业使用，请通过 GitHub 联系作者另行取得书面授权。
+联系地址：https://github.com/MlaiByu
+
+【English】
+
+You are free to:
+
+  1. view, clone, deploy and run this project for personal study, research,
+     or as your own non-commercial personal blog;
+  2. read the source code, learn from the implementation, and apply its
+     techniques to your own non-commercial projects;
+  3. copy, modify and redistribute this project and derivative works for
+     non-commercial purposes, provided this license and the copyright
+     notice above are retained in full.
+
+You may NOT:
+
+  1. use this project or any derivative work for any commercial purpose,
+     including but not limited to: selling the project or any product or
+     service based on it; shipping it as part of a commercial product or
+     service; offering commercial hosting, managed deployment or paid
+     setup services based on it; using it in paid courses, paid content
+     or commercial training material;
+  2. remove, obscure or alter this license or the copyright notice;
+  3. use the author's name to promote your use, or imply that the author
+     endorses it.
+
+Commercial licensing: contact the author via GitHub for written permission.
+Contact: https://github.com/MlaiByu
+
+======================================================================
+免责声明 / Disclaimer
+
+本项目按「现状」提供，不附带任何明示或暗示的担保，包括但不限于对
+适销性、特定用途适用性及不侵权的担保。在任何情况下，作者均不对因
+使用或无法使用本项目而产生的任何索赔、损害或其他责任负责。
+
+THIS SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.

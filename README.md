@@ -37,7 +37,11 @@
 
 ```bash
 # 1) 克隆
-git clone git@github.com:MlaiByu/bluemoon.git
+# HTTPS（无需配置 SSH key，推荐）
+git clone https://github.com/MlaiByu/bluemoon.git
+# SSH（本机已配置 SSH key 时可用）
+# git clone git@github.com:MlaiByu/bluemoon.git
+
 cd bluemoon
 ```
 
