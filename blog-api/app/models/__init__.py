@@ -4,5 +4,6 @@ from app.models.category import Category
 from app.models.post import Post, PostStatus
 from app.models.profile import Profile
 from app.models.user import User
+from app.models.user_avatar import UserAvatar
 
-__all__ = ["Base", "Category", "Post", "PostStatus", "Profile", "User"]
+__all__ = ["Base", "Category", "Post", "PostStatus", "Profile", "User", "UserAvatar"]
