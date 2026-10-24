@@ -70,6 +70,34 @@ def ensure_database_and_user() -> None:
     conn.close()
 
 
+def _ensure_fulltext_index(engine) -> None:
+    """posts 表 ngram 全文索引。
+
+    模型元数据未声明该索引（create_all 不会创建），而 list_posts 的关键词搜索
+    依赖 MATCH(title, summary, content) AGAINST(...)，缺索引会直接 500
+    （MySQL 1191: Can't find FULLTEXT index matching the column list）。
+    """
+    with engine.connect() as conn:
+        exists = conn.execute(
+            text(
+                "SELECT COUNT(*) FROM information_schema.STATISTICS "
+                "WHERE table_schema = DATABASE() AND table_name = 'posts' "
+                "AND index_name = 'ft_search'"
+            )
+        ).scalar()
+        if exists:
+            print(f"{OK}全文索引 ft_search 已存在")
+            return
+        conn.execute(
+            text(
+                "ALTER TABLE posts ADD FULLTEXT INDEX ft_search "
+                "(title, summary, content) WITH PARSER ngram"
+            )
+        )
+        conn.commit()
+        print(f"{OK}全文索引 ft_search (ngram) 已创建")
+
+
 def ensure_tables(drop: bool = False) -> None:
     print(f"\n[2/4] 建表（{settings.MYSQL_DB}）")
     engine = create_engine(settings.DATABASE_URL, pool_pre_ping=True, future=True)
@@ -80,6 +108,7 @@ def ensure_tables(drop: bool = False) -> None:
     with engine.connect() as conn:
         rows = conn.execute(text("SHOW TABLES")).fetchall()
     print(f"{OK}表已就绪：{', '.join(r[0] for r in rows)}")
+    _ensure_fulltext_index(engine)
     engine.dispose()
 
 
