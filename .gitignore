@@ -65,6 +65,12 @@ _tools/verify-*.py
 shot-*.png
 *-screenshot.png
 
+# ===== 接口自动化测试（autotest/）=====
+# 测试产物与本地凭据不入库（config.local.yaml 含真实密码，模板 config.yaml 进库）
+autotest/reports/
+autotest/allure-results/
+autotest/config/config.local.yaml
+
 # ===== IDE / 编辑器 =====
 .idea/
 .vscode/
