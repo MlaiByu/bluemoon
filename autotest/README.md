@@ -24,7 +24,7 @@ config/       配置层：环境地址、账号、标记（密码走环境变量
 - 认证：JWT Bearer；登出后 token 进入服务端黑名单立即失效
 - 文章状态：0=草稿（前台不可见） 1=发布
 
-## 用例清单（v1：22 条）
+## 用例清单（v2：33 条）
 
 | 文件 | 用例 | 类型 |
 |------|------|------|
@@ -32,6 +32,8 @@ config/       配置层：环境地址、账号、标记（密码走环境变量
 | test_auth | 登录成功 / 密码错误 / 缺参数 / 登出后旧 token 失效 | smoke |
 | test_posts_crud | 草稿增查改删 / 后台列表可搜 / 缺标题 / 标题 200 边界 / 201 越界 / 非法 status | crud |
 | test_authz | 5 个管理员接口匿名拦截 / 伪造 token / 草稿对前台列表与详情不可见 | security |
+| test_views | 发布态上报计数 / 草稿软拒绝 / 不存在文章软拒绝 / 同 IP 窗口去重 / 去重粒度按文章 | crud + security |
+| test_pagination | page=0 / page_size=0 / page_size=101 拒绝 / 后台同契约 / page_size=100 边界 / 分页结构自洽 | crud |
 
 ## 快速开始
 
@@ -67,6 +69,10 @@ GitHub Actions：[.github/workflows/autotest.yml](../.github/workflows/autotest.
 2. **标记**：标题统一带 `[autotest]` 前缀，可识别可搜索
 3. **自动清理**：fixture teardown 保证删除，用例失败也清理
 
+唯一让步：阅读上报主链路必须用**发布态**文章（草稿不计阅读量，见
+`test_views.py`）——这类用例在断言完成后立即把文章改回草稿，把前台
+暴露窗口压到秒级，仍带标记且 teardown 删除。
+
 ## 已发现的被测系统缺陷（自动化测试产出）
 
 ### BUG-1 全文搜索不覆盖存量文章（已修复 2026-10-27）
@@ -76,6 +82,7 @@ GitHub Actions：[.github/workflows/autotest.yml](../.github/workflows/autotest.
 - **深化实证（2026-10-27，本地回归 21/22 失败暴露）**：本地库**任何词**的 MATCH（自然语言 / BOOLEAN MODE）都为空，LIKE 却命中；`DROP INDEX + ADD FULLTEXT ... WITH PARSER ngram` 重建**依然为空**；同一份 2 行数据装进新表 MATCH 立即命中；独立临时表 + ngram 正常 → 定位为 **posts 表的 InnoDB FULLTEXT 辅助状态损坏**（疑似历史强杀 / 崩溃恢复遗留），比"存量行缺失"严重得多——整份索引实际为空
 - **修复**：`OPTIMIZE TABLE posts`（InnoDB 语义 = recreate + analyze，整表物理重建 + 全部索引重置）。执行后 MATCH 恢复，本地 22/22 全绿
 - **教训**：①FT 辅助状态损坏时，ALTER DROP+ADD 重建索引无效，OPTIMIZE（或整表重建）才是确定性修复；②"同数据新表对照"是隔离「表级损坏 vs 实例配置」的关键实验；③CI 绿 ≠ 本地绿——环境差异正是自动化回归要抓的问题
+- **复发记录（2026-10-27 晚）**：本地一轮回归中该缺陷再次出现（MATCH 任意词为空、LIKE 命中）。触发条件基本锁定为 **MySQL 未正常关闭**（上次会话结束时未走 `mysqladmin shutdown`）→ InnoDB FULLTEXT 辅助状态损坏可由非正常关机稳定复现。修复同前：`OPTIMIZE TABLE posts`。这验证了自动化回归的价值——症状消失 ≠ 缺陷根除，环境事件会让它回来
 
 ### BUG-2 模型包漏导 UserAvatar，独立脚本崩溃（CI 首跑暴露，已修复）
 
@@ -93,9 +100,10 @@ GitHub Actions：[.github/workflows/autotest.yml](../.github/workflows/autotest.
 
 ## Roadmap
 
-- [x] Allure 报告（allure-pytest 已接入依赖）
+- [x] Allure 报告（allure-pytest 已接入依赖；CI 已生成可浏览 HTML 报告 artifact）
 - [x] GitHub Actions CI 门禁（MySQL 8 + Redis 7 service 容器，同仓自动部署被测系统）
 - [x] 与被测系统合并为单仓库（接口与用例同 PR 演进）
-- [ ] 文章列表分页参数边界用例
-- [ ] 阅读上报去重（同 IP 5 分钟窗口）用例
+- [x] 文章列表分页参数边界用例
+- [x] 阅读上报去重（同 IP 5 分钟窗口）用例
 - [ ] 分类接口用例
+- [ ] Allure 历史趋势（history 跨构建持久化，需 gh-pages 或专用分支）

@@ -15,6 +15,14 @@ class PostApi:
         """文章详情（按 slug，前台视角，草稿返回 404）：GET /posts/detail/{slug}"""
         return self.client.get(f"/posts/detail/{slug}")
 
+    def record_view(self, post_id: int):
+        """上报有效阅读：POST /posts/{post_id}/view
+
+        契约：仅已发布文章计数；同 IP 同文章 5 分钟窗口去重；
+        返回 {"counted": 是否计入, "views": 当前阅读数}。
+        """
+        return self.client.post(f"/posts/{post_id}/view")
+
     # ---------- 管理员接口（需登录） ----------
     def list_admin(self, params: dict | None = None):
         """后台文章列表（含草稿）：GET /posts/admin"""
