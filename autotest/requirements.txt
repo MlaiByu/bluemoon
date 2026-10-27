@@ -1,0 +1,5 @@
+# BlueMoon 接口自动化测试依赖（Python 3.12，安装到 autotest/.venv）
+pytest>=8.0
+requests>=2.31
+PyYAML>=6.0
+allure-pytest>=2.13
