@@ -69,13 +69,13 @@ GitHub Actions：[.github/workflows/autotest.yml](../.github/workflows/autotest.
 
 ## 已发现的被测系统缺陷（自动化测试产出）
 
-### BUG-1 全文搜索不覆盖存量文章（已实测坐实，待修复）
+### BUG-1 全文搜索不覆盖存量文章（已修复 2026-10-27）
 
-- **现象**：keyword 搜索对 2026-10-24 之前创建的文章全部失效（前台列表 / 后台列表 / 详情搜索同源）
-- **实证链**：`MATCH(title,summary,content) AGAINST('123')` 返回空，而 `LIKE '%123%'` 能命中 id=33；同一时刻新建文章（API 与 SQL 两种插入路径）均能立即被搜到 → 排除关键词形态与缓存因素，锁定索引未覆盖存量行
-- **根因**：`posts` 表存量行不在 `ft_search` FULLTEXT 索引内（索引晚于数据创建且未重建）
-- **影响**：老文章在站内搜索永远搜不到
-- **修复建议**：`ALTER TABLE posts DROP INDEX ft_search, ADD FULLTEXT INDEX ft_search (title, summary, content) WITH PARSER ngram;`（重建索引即覆盖存量数据）
+- **现象（2026-10-24 首次实证）**：keyword 搜索对 2026-10-24 之前创建的文章全部失效（前台列表 / 后台列表 / 详情搜索同源）
+- **实证链（首轮）**：`MATCH(title,summary,content) AGAINST('123')` 返回空，而 `LIKE '%123%'` 能命中 id=33；同一时刻新建文章（API 与 SQL 两种插入路径）均能立即被搜到 → 当时锁定"存量行不在索引内"，修复建议为重建索引
+- **深化实证（2026-10-27，本地回归 21/22 失败暴露）**：本地库**任何词**的 MATCH（自然语言 / BOOLEAN MODE）都为空，LIKE 却命中；`DROP INDEX + ADD FULLTEXT ... WITH PARSER ngram` 重建**依然为空**；同一份 2 行数据装进新表 MATCH 立即命中；独立临时表 + ngram 正常 → 定位为 **posts 表的 InnoDB FULLTEXT 辅助状态损坏**（疑似历史强杀 / 崩溃恢复遗留），比"存量行缺失"严重得多——整份索引实际为空
+- **修复**：`OPTIMIZE TABLE posts`（InnoDB 语义 = recreate + analyze，整表物理重建 + 全部索引重置）。执行后 MATCH 恢复，本地 22/22 全绿
+- **教训**：①FT 辅助状态损坏时，ALTER DROP+ADD 重建索引无效，OPTIMIZE（或整表重建）才是确定性修复；②"同数据新表对照"是隔离「表级损坏 vs 实例配置」的关键实验；③CI 绿 ≠ 本地绿——环境差异正是自动化回归要抓的问题
 
 ### BUG-2 模型包漏导 UserAvatar，独立脚本崩溃（CI 首跑暴露，已修复）
 
