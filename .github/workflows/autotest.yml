@@ -90,7 +90,20 @@ jobs:
         working-directory: autotest
         run: pytest --alluredir=reports/allure-results
 
-      - name: 上传 Allure 结果
+      # runner 预装 Node + Java，npx 直接驱动 allure-commandline 生成可浏览 HTML
+      - name: 生成 Allure HTML 报告
+        if: always()
+        run: npx --yes allure-commandline@2.32.0 generate autotest/reports/allure-results --clean --output autotest/reports/allure-report
+
+      - name: 上传 Allure HTML 报告
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report
+          path: autotest/reports/allure-report
+          retention-days: 14
+
+      - name: 上传 Allure 原始结果
         if: always()
         uses: actions/upload-artifact@v4
         with:
