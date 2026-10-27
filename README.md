@@ -323,6 +323,11 @@ bluemoon/
 │   ├── index.html
 │   ├── vite.config.js
 │   └── package.json
+├── autotest/                  # 接口自动化测试（pytest 分层框架，与被测系统同仓演进）
+│   ├── tests/                 # 用例层：业务语义断言（22 条，零污染设计）
+│   ├── apis/                  # 接口封装层：URL / 参数收敛
+│   ├── common/                # 公共层：ApiClient（Token 注入 / 超时 / 请求日志）
+│   └── config/                # 配置层：凭据走环境变量，local 覆盖层不入库
 ├── docker/                    # 容器化
 │   ├── api.Dockerfile         # 多阶段：构建前端产物 + 运行后端
 │   └── entrypoint.sh          # 等 MySQL → 幂等初始化库 → 启动 uvicorn
