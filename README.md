@@ -6,6 +6,20 @@
 
 前后端分离，克隆后按下面「快速开始」操作即可跑起完整站点。
 
+## 项目截图
+
+| 首页（亮色） | 首页（暗色） |
+| --- | --- |
+| ![首页亮色](docs/screenshots/home-light.jpg) | ![首页暗色](docs/screenshots/home-dark.jpg) |
+
+| 文章详情（Markdown + 代码高亮） | 后台仪表盘 |
+| --- | --- |
+| ![文章详情](docs/screenshots/post-detail.png) | ![后台仪表盘](docs/screenshots/admin-dashboard.png) |
+
+| 文章归档 | 后台登录 |
+| --- | --- |
+| ![文章归档](docs/screenshots/archives.png) | ![后台登录](docs/screenshots/admin-login.png) |
+
 ## 项目简介
 
 - **后端 `blog-api/`**：基于 FastAPI 构建，提供 RESTful API
